@@ -6,29 +6,95 @@ import uuid
 import requests
 from contextlib import closing
 
-from oauthenticator.generic import GenericOAuthenticator
+from oauthenticator.oauth2 import OAuthenticator, OAuthLoginHandler
+from tornado.auth import OAuth2Mixin
 from tornado import gen
 from tornado.httpclient import HTTPRequest, AsyncHTTPClient
 from tornado.httputil import url_concat
-from traitlets import Unicode, Bool, List
+from traitlets import Unicode, Bool, Dict, List
 
 from jupyterhub import orm
 from jupyterhub.objects import Server
 from .j4j_logout import J4J_LogoutHandler
 
 
-class J4J_Authenticator(GenericOAuthenticator):
-    spawnable_dic = {}
-    def spawnable(self, user_name, server_name):
-        if user_name in self.spawnable_dic.keys() and server_name in self.spawnable_dic[user_name].keys():
-            return self.spawnable_dic[user_name][server_name]
-        else:
-            return True
+class J4JWorkshopEnvMixin(OAuth2Mixin):
+    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('OAUTH2_TOKEN_URL', '')
+    _OAUTH_AUTHORIZE_URL = os.environ.get('OAUTH2_WORKSHOP_AUTHORIZE_URL', '')
+
+
+class J4JWorkshopLoginHandler(OAuthLoginHandler, J4JWorkshopEnvMixin):
+    pass
+
+class J4J_Workshop_Authenticator(OAuthenticator):
+    
+    login_service = Unicode(
+        "Jupyter@JSC Workshop Authentication",
+        config=True
+    )
+
+    login_handler = J4JWorkshopLoginHandler
+
+    userdata_url = Unicode(
+        os.environ.get('OAUTH2_USERDATA_URL', ''),
+        config=True,
+        help="Userdata url to get user data login information"
+    )
+    
+    token_url = Unicode(
+        os.environ.get('OAUTH2_TOKEN_URL', ''),
+        config=True,
+        help="Access token endpoint URL"
+    )
+    
+    extra_params = Dict(
+        help="Extra parameters for first POST request"
+    ).tag(config=True)
+
+    username_key = Unicode(
+        os.environ.get('OAUTH2_USERNAME_KEY', 'username'),
+        config=True,
+        help="Userdata username key from returned json for USERDATA_URL"
+    )
+    
+    userdata_params = Dict(
+        help="Userdata params to get user data login information"
+    ).tag(config=True)
+
+    userdata_method = Unicode(
+        os.environ.get('OAUTH2_USERDATA_METHOD', 'GET'),
+        config=True,
+        help="Userdata method to get user data login information"
+    )
+    
+    userdata_token_method = Unicode(
+        os.environ.get('OAUTH2_USERDATA_REQUEST_TYPE', 'header'),
+        config=True,
+        help="Method for sending access token in userdata request. Supported methods: header, url. Default: header" 
+    )
+
+    tls_verify = Bool(
+        os.environ.get('OAUTH2_TLS_VERIFY', 'True').lower() in {'true', '1'},
+        config=True,
+        help="Disable TLS verification on http request"
+    )
+    
+    basic_auth = Bool(
+        os.environ.get('OAUTH2_BASIC_AUTH', 'True').lower() in {'true', '1'},
+        config=True,
+        help="Disable basic authentication for access token request"
+    )
 
     multiple_instances = Bool(
         os.environ.get('MULTIPLE_INSTANCES', 'false').lower() == 'true',
         config=True,
         help="Is this JupyterHub instance running with other instances behind the same proxy with the same database?"
+        )
+
+    hpc_infos_key = Unicode(
+        os.environ.get('OAUTH2_HPC_INFOS_KEY', ''),
+        config=True,
+        help="Userdata hpc_infos key from returned json for USERDATA_URL"
         )
 
     tokeninfo_url = Unicode(
@@ -47,12 +113,6 @@ class J4J_Authenticator(GenericOAuthenticator):
         os.environ.get('OAUTH2_TOKENINFO_EXP_KEY', 'exp'),
         config=True,
         help="Tokeninfo exp key from returned json for TOKENINFO_URL"
-        )
-
-    hpc_infos_key = Unicode(
-        os.environ.get('OAUTH2_HPC_INFOS_KEY', ''),
-        config=True,
-        help="Userdata hpc_infos key from returned json for USERDATA_URL"
         )
 
     j4j_urls_paths = Unicode(
@@ -90,7 +150,7 @@ class J4J_Authenticator(GenericOAuthenticator):
         config = True,
         help = "Path to the configurable http proxy secret file"
         )
-        
+
     scope = List(Unicode(), 
         default_value=['single-logout', 'hpc_infos', 'x500'],
         config=True,
@@ -99,7 +159,7 @@ class J4J_Authenticator(GenericOAuthenticator):
         For GitHub in particular, you can see github_scopes.md in this repo.                                                                                                                                       
         """
         )
-
+    
     enable_auth_state = Bool(
         os.environ.get('ENABLE_AUTH_STATE', False),
         config=True,
@@ -120,10 +180,18 @@ class J4J_Authenticator(GenericOAuthenticator):
         New in JupyterHub 0.8
         """,
     )
-
-
+    
+    
+    
     logout_handler = J4J_LogoutHandler
     errors = {}
+    
+    spawnable_dic = {}
+    def spawnable(self, user_name, server_name):
+        if user_name in self.spawnable_dic.keys() and server_name in self.spawnable_dic[user_name].keys():
+            return self.spawnable_dic[user_name][server_name]
+        else:
+            return True
 
     def get_handlers(self, app):
         return super().get_handlers(app) + [(r'/logout', self.logout_handler)]
