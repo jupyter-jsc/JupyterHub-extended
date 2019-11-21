@@ -19,6 +19,7 @@ from async_generator import async_generator, yield_
 
 from jupyterhub.spawner import Spawner
 from jupyterhub import orm
+from jupyterhub.utils import url_path_join
 
 
 from .utils import get_user_dic, reservations, create_spawn_data, create_spawn_header
@@ -235,7 +236,11 @@ class J4J_Spawner(Spawner):
                            'JUPYTERHUB_BASE_URL': '/',
                            'JUPYTERHUB_SERVICE_PREFIX': '/user/{}/{}/'.format(self.user.name, self.name)
                     }
-                    env['JUPYTERHUB_API_TOKEN'] = self.user.new_api_token()
+                    base_url = url_path_join(self.user.base_url, self.name) + '/'
+                    note = "Server at %s" % base_url
+                    self.api_token = self.user.new_api_token(note=note)
+                    self.user.db.commit()
+                    env['JUPYTERHUB_API_TOKEN'] = self.api_token
                     env['JPY_API_TOKEN'] = env['JUPYTERHUB_API_TOKEN']
                     self.log.debug("{} - New Environment: {}".format(uuidcode, env))
                 except:

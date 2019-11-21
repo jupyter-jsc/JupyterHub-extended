@@ -22,11 +22,14 @@ class J4J_APITokenHandler(APIHandler):
             uuidcode = uuid.uuid4().hex
         self.log.info("{} - GetToken for server: {}".format(uuidcode, server_name))
         user = None
-        if 'Authorization' in self.request.headers.keys():
-            s = self.request.headers.get('Authorization').split()
-            found = APIToken.find(self.db, token=s[1])
-            if found is not None:
-                user = self._user_from_orm(found.user)
+        try:
+            if 'Authorization' in self.request.headers.keys():
+                s = self.request.headers.get('Authorization').split()
+                found = APIToken.find(self.db, token=s[1])
+                if found is not None:
+                    user = self._user_from_orm(found.user)
+        except:
+            self.log.debug("{} - Could not find user for this token: {}".format(uuidcode, self.request.headers))
         #if not user:
         #    user = self.find_user(username)
         if user:
