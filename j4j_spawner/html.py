@@ -2,7 +2,6 @@
 Created on May 17, 2019
 
 @author: Tim Kreuzer
-@mail: t.kreuzer@fz-juelich.de
 '''
 
 import json
