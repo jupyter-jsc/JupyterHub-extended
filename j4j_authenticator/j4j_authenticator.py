@@ -26,7 +26,7 @@ class J4J_Authenticator(GenericOAuthenticator):
             return True
 
     multiple_instances = Bool(
-        os.environ.get('MULTIPLE_INSTANCES', 'false').lower() == 'true',
+        os.environ.get('MULTIPLE_INSTANCES', 'false').lower() in {'true', '1'},
         config=True,
         help="Is this JupyterHub instance running with other instances behind the same proxy with the same database?"
         )
@@ -90,18 +90,18 @@ class J4J_Authenticator(GenericOAuthenticator):
         config = True,
         help = "Path to the configurable http proxy secret file"
         )
-        
-    scope = List(Unicode(), 
+
+    scope = List(Unicode(),
         default_value=['single-logout', 'hpc_infos', 'x500'],
         config=True,
         help="""The OAuth scopes to request.
         See the OAuth documentation of your OAuth provider for options.
-        For GitHub in particular, you can see github_scopes.md in this repo.                                                                                                                                       
+        For GitHub in particular, you can see github_scopes.md in this repo.
         """
         )
 
     enable_auth_state = Bool(
-        os.environ.get('ENABLE_AUTH_STATE', False),
+        os.environ.get('ENABLE_AUTH_STATE', False).lower() in {'true', '1'},
         config=True,
         help="""Enable persisting auth_state (if available).
 

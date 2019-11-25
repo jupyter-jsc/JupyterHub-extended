@@ -27,7 +27,6 @@ class J4JWorkshopLoginHandler(OAuthLoginHandler, J4JWorkshopEnvMixin):
     pass
 
 class J4J_Workshop_Authenticator(OAuthenticator):
-    
     login_service = Unicode(
         "Jupyter@JSC Workshop Authentication",
         config=True
@@ -40,13 +39,13 @@ class J4J_Workshop_Authenticator(OAuthenticator):
         config=True,
         help="Userdata url to get user data login information"
     )
-    
+
     token_url = Unicode(
         os.environ.get('OAUTH2_TOKEN_URL', ''),
         config=True,
         help="Access token endpoint URL"
     )
-    
+
     extra_params = Dict(
         help="Extra parameters for first POST request"
     ).tag(config=True)
@@ -56,7 +55,7 @@ class J4J_Workshop_Authenticator(OAuthenticator):
         config=True,
         help="Userdata username key from returned json for USERDATA_URL"
     )
-    
+
     userdata_params = Dict(
         help="Userdata params to get user data login information"
     ).tag(config=True)
@@ -66,7 +65,7 @@ class J4J_Workshop_Authenticator(OAuthenticator):
         config=True,
         help="Userdata method to get user data login information"
     )
-    
+
     userdata_token_method = Unicode(
         os.environ.get('OAUTH2_USERDATA_REQUEST_TYPE', 'header'),
         config=True,
@@ -78,7 +77,7 @@ class J4J_Workshop_Authenticator(OAuthenticator):
         config=True,
         help="Disable TLS verification on http request"
     )
-    
+
     basic_auth = Bool(
         os.environ.get('OAUTH2_BASIC_AUTH', 'True').lower() in {'true', '1'},
         config=True,
@@ -86,7 +85,7 @@ class J4J_Workshop_Authenticator(OAuthenticator):
     )
 
     multiple_instances = Bool(
-        os.environ.get('MULTIPLE_INSTANCES', 'false').lower() == 'true',
+        os.environ.get('MULTIPLE_INSTANCES', 'false').lower() in {'true', '1'},
         config=True,
         help="Is this JupyterHub instance running with other instances behind the same proxy with the same database?"
         )
@@ -151,17 +150,17 @@ class J4J_Workshop_Authenticator(OAuthenticator):
         help = "Path to the configurable http proxy secret file"
         )
 
-    scope = List(Unicode(), 
+    scope = List(Unicode(),
         default_value=['single-logout', 'hpc_infos', 'x500'],
         config=True,
         help="""The OAuth scopes to request.
         See the OAuth documentation of your OAuth provider for options.
-        For GitHub in particular, you can see github_scopes.md in this repo.                                                                                                                                       
+        For GitHub in particular, you can see github_scopes.md in this repo.
         """
         )
-    
+
     enable_auth_state = Bool(
-        os.environ.get('ENABLE_AUTH_STATE', False),
+        os.environ.get('ENABLE_AUTH_STATE', False).lower() in {'true', '1'},
         config=True,
         help="""Enable persisting auth_state (if available).
 
@@ -180,12 +179,10 @@ class J4J_Workshop_Authenticator(OAuthenticator):
         New in JupyterHub 0.8
         """,
     )
-    
-    
-    
+
+
     logout_handler = J4J_LogoutHandler
     errors = {}
-    
     spawnable_dic = {}
     def spawnable(self, user_name, server_name):
         if user_name in self.spawnable_dic.keys() and server_name in self.spawnable_dic[user_name].keys():
