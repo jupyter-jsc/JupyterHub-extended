@@ -215,7 +215,8 @@ class BaseAuthenticator(GenericOAuthenticator):
         self.log.debug("{} - Update memory of spawner. Called by: {}".format(user.name, caller))
         with open(self.j4j_urls_paths, 'r') as f:
             j4j_paths = json.load(f)
-        resources_filled = j4j_paths.get('hub', {}).get('path_partitions', '<no_path_found>')
+        with open(j4j_paths.get('hub', {}).get('path_partitions', '<no_path_found>'), 'r') as f:
+            resources_filled = json.load(f)
         db_user = user.db.query(orm.User).filter(orm.User.name == user.name).first()
         user.db.refresh(db_user)
         db_spawner_all = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).all()
