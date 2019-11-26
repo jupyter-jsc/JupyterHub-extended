@@ -17,6 +17,7 @@ from oauthenticator.oauth2 import OAuthLoginHandler, OAuthCallbackHandler
 from oauthenticator.generic import GenericOAuthenticator
 
 from .j4j_logout import J4J_LogoutHandler
+import time
 
 class JSCLDAPCallbackHandler(OAuthCallbackHandler):
     pass
@@ -308,6 +309,15 @@ class BaseAuthenticator(GenericOAuthenticator):
         else:
             return True
 
+    def f1(self):
+        time.sleep(1)
+        self.log.info("f1")
+
+    @gen.coroutine
+    def f2(self):
+        time.sleep(1)
+        self.log.info("f2")
+
     @gen.coroutine
     def authenticate(self, handler, data=None):
         uuidcode = uuid.uuid4().hex
@@ -315,6 +325,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
             self.log.debug("{} - Call JSCLDAP_authenticate".format(uuidcode))
             try:
+                self.log.debug("F1 - Call")
+                self.f1()
+                self.log.debug("F1 - Called")
+                self.log.debug("F2 - Call")
+                self.f2()
+                self.log.debug("F2 - Called")
                 tmp = self.jscldap_authenticate(handler, uuidcode, data)
             except:
                 self.log.exception("{} - Exception".format(uuidcode))
@@ -323,7 +339,8 @@ class BaseAuthenticator(GenericOAuthenticator):
         else:
             self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
             return "Username"
-
+        
+    @gen.coroutine
     def jscldap_authenticate(self, handler, uuidcode, data=None):
         self.log.debug("{} - JSCLDAP Authenticate".format(uuidcode))
         code = handler.get_argument("code")
