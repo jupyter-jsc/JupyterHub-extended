@@ -9,7 +9,6 @@ from contextlib import closing
 from traitlets import Unicode, Bool, List, Dict
 from jupyterhub import orm
 from jupyterhub.objects import Server
-from tornado import gen
 from tornado.auth import OAuth2Mixin
 from tornado.httpclient import HTTPRequest, AsyncHTTPClient
 from tornado.httputil import url_concat
@@ -17,8 +16,6 @@ from oauthenticator.oauth2 import OAuthLoginHandler, OAuthCallbackHandler
 from oauthenticator.generic import GenericOAuthenticator
 
 from .j4j_logout import J4J_LogoutHandler
-import time
-import asyncio
 
 class JSCLDAPCallbackHandler(OAuthCallbackHandler):
     pass
@@ -256,7 +253,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             if name not in user.spawners.keys():
                 #self.log.debug("{} - Create wrapper for {}".format(user.name, name))
                 user.spawners[name] = user._new_spawner(name)
-            # yield wrapper if it exists (server may be active)
+            # get wrapper if it exists (server may be active)
             user.spawners[name].load_state(spawner[name]['state'])
             if user.spawners[name].active:
                 #self.log.debug("{} - Spawner {} is in memory and active".format(user.name, name))
@@ -310,14 +307,13 @@ class BaseAuthenticator(GenericOAuthenticator):
         else:
             return True
 
-    @gen.coroutine
-    def authenticate(self, handler, data=None):
+    async def authenticate(self, handler, data=None):
         uuidcode = uuid.uuid4().hex
         self.log.debug("{} - Login attempt".format(uuidcode))
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
             self.log.debug("{} - Call JSCLDAP_authenticate".format(uuidcode))
             try:
-                tmp = yield self.jscldap_authenticate(handler, uuidcode, data)
+                tmp = await self.jscldap_authenticate(handler, uuidcode, data)
             except:
                 self.log.exception("{} - Exception".format(uuidcode))
             self.log.debug("{} - Result: {}".format(uuidcode, tmp))
@@ -361,7 +357,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                           body=urllib.parse.urlencode(params)
                           )
 
-        resp = yield http_client.fetch(req)
+        resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
 
         accesstoken = resp_json.get('access_token', None)
@@ -386,7 +382,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                           method=self.jscldap_userdata_method,
                           headers=headers,
                           validate_cert=self.tls_verify)
-        resp = yield http_client.fetch(req)
+        resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
 
         if not resp_json.get(self.jscldap_username_key):
@@ -402,7 +398,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                               method=self.jscldap_tokeninfo_method,
                               headers=headers,
                               validate_cert=self.tls_verify)
-        resp_exp = yield http_client.fetch(req_exp)
+        resp_exp = await http_client.fetch(req_exp)
         resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
 
         if not resp_json_exp.get(self.jscldap_tokeninfo_exp_key):
@@ -437,7 +433,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         except:
             self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
 
-        yield {
+        return {
                 'name': username,
                 'auth_state': {
                                'accesstoken': accesstoken,
@@ -448,4 +444,3 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'errormsg': ''
                                }
                 }
-        return
