@@ -336,6 +336,9 @@ class BaseAuthenticator(GenericOAuthenticator):
                 self.log.debug("F1 - Call")
                 self.log.debug(self.f1())
                 self.log.debug("F1 - Called")
+                self.log.debug("F2 - Call2")
+                self.log.debug(self.f2())
+                self.log.debug("F2 - Called2")
                 self.log.debug("F2 - Call")
                 self.log.debug(asyncio.ensure_future(self.f2()))
                 self.log.debug("F2 - Called")
@@ -344,8 +347,9 @@ class BaseAuthenticator(GenericOAuthenticator):
                 self.log.debug("F3 - Called")
                 self.log.debug("F3 - Call2")
                 f3_res = yield self.f3()
-                self.log.debug(f3_res)                
+                self.log.debug(f3_res)
                 self.log.debug("F3 - Called2")
+            
                 tmp = self.jscldap_authenticate(handler, uuidcode, data)
             except:
                 self.log.exception("{} - Exception".format(uuidcode))
