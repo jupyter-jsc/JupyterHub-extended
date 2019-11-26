@@ -7,18 +7,17 @@ import requests
 
 from contextlib import closing
 from traitlets import Unicode, Bool, List, Dict
-from jupyterhub.handlers import BaseHandler
 from jupyterhub import orm
 from jupyterhub.objects import Server
 from tornado.auth import OAuth2Mixin
 from tornado.httpclient import HTTPRequest, AsyncHTTPClient
 from tornado.httputil import url_concat
-from oauthenticator.oauth2 import OAuthLoginHandler
+from oauthenticator.oauth2 import OAuthLoginHandler, OAuthCallbackHandler
 from oauthenticator.generic import GenericOAuthenticator
 
 from .j4j_logout import J4J_LogoutHandler
 
-class JSCLDAPCallbackHandler(BaseHandler):
+class JSCLDAPCallbackHandler(OAuthCallbackHandler):
     pass
 
 class JSCLDAPEnvMixin(OAuth2Mixin):
@@ -39,7 +38,7 @@ class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
             extra_params={'state': state},
             response_type='code')
 
-class BaseAuthenticator(GenericOAuthenticator):
+class BaseAuthenticator(GenericOAuthenticator):    
     login_service = Unicode(
         "Jupyter@JSC Authenticator",
         config=True
