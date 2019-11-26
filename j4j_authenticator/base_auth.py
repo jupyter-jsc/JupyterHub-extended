@@ -28,7 +28,7 @@ class JSCLDAPEnvMixin(OAuth2Mixin):
 class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
     def get(self):
         self.log.info(self.authenticator.__class__)
-        redirect_uri = self.authenticator.get_callback_url(self, None, 'JSCLDAP')
+        redirect_uri = self.authenticator.get_callback_url(None, "JSCLDAP")
         self.log.info('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
         self.set_state_cookie(state)
@@ -195,7 +195,8 @@ class BaseAuthenticator(GenericOAuthenticator):
             (r'/logout', self.logout_handler)
         ]
 
-    def get_callback_url(self, handler=None):
+    def get_callback_url(self, handler=None, authenticator_name=""):
+        self.log.debug(authenticator_name)
         self.log.debug(self.__class__)
         return self.jscldap_callback_url
 
@@ -320,7 +321,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
         params = dict(
-            redirect_uri=self.get_callback_url("JSCLDAP"),
+            redirect_uri=self.get_callback_url(None, "JSCLDAP"),
             code=code,
             grant_type='authorization_code'
         )
