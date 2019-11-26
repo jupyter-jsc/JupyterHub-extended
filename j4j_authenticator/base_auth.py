@@ -309,12 +309,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         uuidcode = uuid.uuid4().hex
         self.log.debug("{} - Login attempt".format(uuidcode))
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
-            return await self.jscldap_authenticate(handler, uuidcode, data)
+            return self.jscldap_authenticate(handler, uuidcode, data)
         else:
             self.log.warning("Unknown CallbackHandler: {}".format(handler.__class__))
             return "Username"
 
-    async def jscldap_authenticate(self, handler, uuidcode, data=None):
+    def jscldap_authenticate(self, handler, uuidcode, data=None):
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
         params = dict(
