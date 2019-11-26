@@ -310,22 +310,6 @@ class BaseAuthenticator(GenericOAuthenticator):
         else:
             return True
 
-    def f1(self):
-        time.sleep(1)
-        self.log.info("f1")
-        return {"f1": {"1":1}}
-
-    @gen.coroutine
-    def f2(self):
-        time.sleep(1)
-        self.log.info("f2")
-        return {"f2": {"2":2}}
-    
-    async def f3(self):
-        time.sleep(1)
-        self.log.info("f3")
-        return {"f3": {"3":3}}
-
     @gen.coroutine
     def authenticate(self, handler, data=None):
         uuidcode = uuid.uuid4().hex
@@ -333,24 +317,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
             self.log.debug("{} - Call JSCLDAP_authenticate".format(uuidcode))
             try:
-                self.log.debug("F1 - Call")
-                self.log.debug(self.f1())
-                self.log.debug("F1 - Called")
-                self.log.debug("F2 - Call2")
-                self.log.debug(self.f2())
-                self.log.debug("F2 - Called2")
-                self.log.debug("F2 - Call")
-                self.log.debug(asyncio.ensure_future(self.f2()))
-                self.log.debug("F2 - Called")
-                self.log.debug("F3 - Call")
-                self.log.debug(asyncio.ensure_future(self.f3()))                
-                self.log.debug("F3 - Called")
-                self.log.debug("F3 - Call2")
-                f3_res = yield self.f3()
-                self.log.debug(f3_res)
-                self.log.debug("F3 - Called2")
-            
-                tmp = self.jscldap_authenticate(handler, uuidcode, data)
+                tmp = yield self.jscldap_authenticate(handler, uuidcode, data)
             except:
                 self.log.exception("{} - Exception".format(uuidcode))
             self.log.debug("{} - Result: {}".format(uuidcode, tmp))
@@ -359,7 +326,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
             return "Username"
         
-    def jscldap_authenticate(self, handler, uuidcode, data=None):
+    async def jscldap_authenticate(self, handler, uuidcode, data=None):
         self.log.debug("{} - JSCLDAP Authenticate".format(uuidcode))
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
