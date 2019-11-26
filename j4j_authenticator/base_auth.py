@@ -317,7 +317,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
             self.log.debug("{} - Call JSCLDAP_authenticate".format(uuidcode))
             try:
-                tmp = self.jscldap_authenticate(handler, uuidcode, data)
+                tmp = yield self.jscldap_authenticate(handler, uuidcode, data)
             except:
                 self.log.exception("{} - Exception".format(uuidcode))
             self.log.debug("{} - Result: {}".format(uuidcode, tmp))
@@ -326,7 +326,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
             return "Username"
         
-    def jscldap_authenticate(self, handler, uuidcode, data=None):
+    async def jscldap_authenticate(self, handler, uuidcode, data=None):
         self.log.debug("{} - JSCLDAP Authenticate".format(uuidcode))
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
@@ -417,7 +417,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         try:
             with open(self.j4j_urls_paths, 'r') as f:
                 j4j_paths = json.load(f)
-            with open(self.j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
+            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
                 orchestrator_token = f.read().rstrip()
             json_dic = { 'accesstoken': accesstoken,
                          'refreshtoken': refreshtoken }
@@ -437,7 +437,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         except:
             self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
 
-        return {
+        yield {
                 'name': username,
                 'auth_state': {
                                'accesstoken': accesstoken,
@@ -448,3 +448,4 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'errormsg': ''
                                }
                 }
+        return
