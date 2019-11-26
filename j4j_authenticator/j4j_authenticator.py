@@ -230,11 +230,13 @@ class J4J_Authenticator(GenericOAuthenticator):
     @gen.coroutine
     def authenticate(self, handler, data=None):  # @UnusedVariable
         code = handler.get_argument("code")
-        self.log.info(dir(self))
-        self.log.info(code)
         self.log.info(dir(handler))
-        self.log.info(handler)
-        self.log.info(data)
+        self.log.info(dir(handler.request))
+        self.log.info(handler.request)
+        self.log.info(handler.get_login_url())
+        self.log.info(handler.request.protocol)
+        self.log.info(handler.request.host)
+        self.log.info(handler.hub.server.base_url)
         http_client = AsyncHTTPClient()
 
         params = dict(
