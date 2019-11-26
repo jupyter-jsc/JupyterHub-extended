@@ -22,8 +22,8 @@ class JSCLDAPCallbackHandler(BaseHandler):
     pass
 
 class JSCLDAPEnvMixin(OAuth2Mixin):
-    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCLDAP_OAUTH2_TOKEN_URL', '')
-    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCLDAP_OAUTH2_AUTHORIZE_URL', '')
+    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCLDAP_TOKEN_URL', '')
+    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCLDAP_AUTHORIZE_URL', '')
 
 class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
     def get(self):
