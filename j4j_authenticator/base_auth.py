@@ -50,6 +50,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         help="Is this JupyterHub instance running with other instances behind the same proxy with the same database?"
     )
 
+    jscldap_callback_url = Unicode(
+        os.getenv('JSCLDAP_CALLBACK_URL', ''),
+        config=True,
+        help="""Callback URL to use.
+        Typically `https://{host}/hub/oauth_callback`"""
+    )
     jscldap_client_id = Unicode(
         os.environ.get('JSCLDAP_CLIENT_ID', ''),
         config=True,
@@ -155,7 +161,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         config = True,
         help = "Path to the J4J_Tunnel token file"
     )
-    
+
     enable_auth_state = Bool(
         os.environ.get('ENABLE_AUTH_STATE', False).lower() in {'true', '1'},
         config=True,
