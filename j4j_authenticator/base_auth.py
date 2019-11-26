@@ -132,7 +132,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         help="User-Agent variable for communications"
     )
 
-    partitions_path = Unicode( # should be removed
+    partitions_path = Unicode( # Used outside Authenticator
         os.environ.get('PARTITIONS_PATH', ''),
         config = True,
         help = "Path to the filled_resources file"
