@@ -27,6 +27,7 @@ class JSCLDAPEnvMixin(OAuth2Mixin):
 
 class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
     def get(self):
+        self.log.info(self.authenticator.__class__)
         redirect_uri = self.authenticator.get_callback_url(self, None, 'JSCLDAP')
         self.log.info('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
@@ -194,9 +195,9 @@ class BaseAuthenticator(GenericOAuthenticator):
             (r'/logout', self.logout_handler)
         ]
 
-    def get_callback_url(self, handler=None, authenticator_name="None"):
-        if authenticator_name == 'JSCLDAP':
-            return self.jscldap_callback_url
+    def get_callback_url(self, handler=None):
+        self.log.debug(self.__class__)
+        return self.jscldap_callback_url
 
     def remove_secret(self, json_dict):
         if type(json_dict) != dict:
