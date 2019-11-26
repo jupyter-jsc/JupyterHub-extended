@@ -38,6 +38,28 @@ class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
             extra_params={'state': state},
             response_type='code')
 
+class JSCWorkshopCallbackHandler(OAuthCallbackHandler):
+    pass
+
+class JSCWorkshopEnvMixin(OAuth2Mixin):
+    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCWORKSHOP_TOKEN_URL', '')
+    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCWORKSHOP_AUTHORIZE_URL', '')
+
+class JSCWorkshopLoginHandler(OAuthLoginHandler, JSCWorkshopEnvMixin):
+    def get(self):
+        self.log.info(self.authenticator.__class__)
+        redirect_uri = self.authenticator.get_callback_url(None, "JSCWorkshop")
+        self.log.info('OAuth redirect: %r', redirect_uri)
+        state = self.get_state()
+        self.set_state_cookie(state)
+        self.authorize_redirect(
+            redirect_uri=redirect_uri,
+            client_id=self.authenticator.jscworkshop_client_id,
+            scope=self.authenticator.jscworkshop_scope,
+            extra_params={'state': state},
+            response_type='code')
+
+
 class BaseAuthenticator(GenericOAuthenticator):    
     login_service = Unicode(
         "Jupyter@JSC Authenticator",
@@ -120,6 +142,76 @@ class BaseAuthenticator(GenericOAuthenticator):
         help="Tokeninfo exp key from returned json for JSCLDAP_TOKENINFO_URL"
     )
 
+    jscworkshop_callback_url = Unicode(
+        os.getenv('JSCWORKSHOP_CALLBACK_URL', ''),
+        config=True,
+        help="""Callback URL to use.
+        Typically `https://{host}/hub/oauth_callback`"""
+    )
+    jscworkshop_client_id = Unicode(
+        os.environ.get('JSCWORKSHOP_CLIENT_ID', ''),
+        config=True,
+        help="Client ID for JSCLdap Login"
+    )
+
+    jscworkshop_client_secret = Unicode(
+        os.environ.get('JSCWORKSHOP_CLIENT_SECRET', ''),
+        config=True,
+        help="Client Secret for JSCLdap Login"
+    )
+
+    jscworkshop_scope = List(Unicode(), config=True,
+        help="The OAuth scopes to request for JSCLdap."
+    )
+
+    jscworkshop_token_url = Unicode(
+        os.environ.get('JSCWORKSHOP_TOKEN_URL', ''),
+        config=True,
+        help="Access token endpoint URL for JSCLdap"
+    )
+
+    jscworkshop_userdata_url = Unicode(
+        os.environ.get('JSCWORKSHOP_USERDATA_URL', ''),
+        config=True,
+        help="Userdata url to get user data login information for JSCLdap"
+    )
+
+    jscworkshop_userdata_params = Dict(
+        {},
+        config=True,
+        help="Userdata params to get user data login information for JSCLdap"
+    )
+
+    jscworkshop_userdata_method = Unicode(
+        os.environ.get('JSCWORKSHOP_USERDATA_METHOD', 'GET'),
+        config=True,
+        help="Userdata method to get user data login information for JSCLdap"
+    )
+
+    jscworkshop_username_key = Unicode(
+        os.environ.get('JSCWORKSHOP_USERNAME_KEY', 'username'),
+        config=True,
+        help="Userdata username key from returned json for JSCLDAP_USERDATA_URL"
+    )
+
+    jscworkshop_tokeninfo_url = Unicode(
+        os.environ.get('JSCWORKSHOP_TOKENINFO_URL', ''),
+        config=True,
+        help="Tokeninfo url to get tokeninfo data login information for JSCLdap"
+    )
+
+    jscworkshop_tokeninfo_method = Unicode(
+        os.environ.get('JSCWORKSHOP_TOKENINFO_METHOD', 'GET'),
+        config = True,
+        help="Tokeninfo method to get expire date of access token for JSCLdap"
+    )
+
+    jscworkshop_tokeninfo_exp_key = Unicode(
+        os.environ.get('JSCWORKSHOP_TOKENINFO_EXP_KEY', 'exp'),
+        config=True,
+        help="Tokeninfo exp key from returned json for JSCLDAP_TOKENINFO_URL"
+    )
+
     hpc_infos_key = Unicode(
         os.environ.get('OAUTH2_HPC_INFOS_KEY', ''),
         config=True,
@@ -183,21 +275,26 @@ class BaseAuthenticator(GenericOAuthenticator):
         """,
     )
 
-    login_handler = [JSCLDAPLoginHandler]
+    login_handler = [JSCLDAPLoginHandler, JSCWorkshopLoginHandler]
     logout_handler = J4J_LogoutHandler
-    callback_handler = [JSCLDAPCallbackHandler]
+    callback_handler = [JSCLDAPCallbackHandler, JSCWorkshopCallbackHandler]
 
     def get_handlers(self, app):
         return [
             (r'/jscldap_login', self.login_handler[0]),
             (r'/jscldap_callback', self.callback_handler[0]),
+            (r'/jscworkshop_login', self.login_handler[1]),
+            (r'/jscworkshop_callback', self.callback_handler[1]),
             (r'/logout', self.logout_handler)
         ]
 
     def get_callback_url(self, handler=None, authenticator_name=""):
-        self.log.debug(authenticator_name)
-        self.log.debug(self.__class__)
-        return self.jscldap_callback_url
+        if authenticator_name == "JSCLDAP":
+            return self.jscldap_callback_url
+        elif authenticator_name == "JSCWorkshop":
+            return self.jscworkshop_callback_url
+        else:
+            return "<unknown_callback_url>"
 
     def remove_secret(self, json_dict):
         if type(json_dict) != dict:
@@ -309,21 +406,17 @@ class BaseAuthenticator(GenericOAuthenticator):
 
     async def authenticate(self, handler, data=None):
         uuidcode = uuid.uuid4().hex
-        self.log.debug("{} - Login attempt".format(uuidcode))
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
             self.log.debug("{} - Call JSCLDAP_authenticate".format(uuidcode))
-            try:
-                tmp = await self.jscldap_authenticate(handler, uuidcode, data)
-            except:
-                self.log.exception("{} - Exception".format(uuidcode))
-            self.log.debug("{} - Result: {}".format(uuidcode, tmp))
-            return tmp
+            return await self.jscldap_authenticate(handler, uuidcode, data)        
+        elif (handler.__class__.__name__ == "JSCWorkshopCallbackHandler"):
+            self.log.debug("{} - Call JSCWorkshop_authenticate".format(uuidcode))
+            return await self.jscworkshop_authenticate(handler, uuidcode, data)
         else:
             self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
             return "Username"
         
     async def jscldap_authenticate(self, handler, uuidcode, data=None):
-        self.log.debug("{} - JSCLDAP Authenticate".format(uuidcode))
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
         params = dict(
@@ -409,6 +502,128 @@ class BaseAuthenticator(GenericOAuthenticator):
         username = resp_json.get(self.jscldap_username_key).split('=')[1]
         username = self.normalize_username(username)
         self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(self.jscldap_username_key), username))
+        self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
+        try:
+            with open(self.j4j_urls_paths, 'r') as f:
+                j4j_paths = json.load(f)
+            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
+                orchestrator_token = f.read().rstrip()
+            json_dic = { 'accesstoken': accesstoken,
+                         'refreshtoken': refreshtoken }
+            header = {'Intern-Authorization': orchestrator_token,
+                      'uuidcode': uuidcode,
+                      'stopall': 'false',
+                      'username': username,
+                      'expire': expire,
+                      'allbutthese': 'true' }
+            url = j4j_paths.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
+            with closing(requests.post(url,
+                                      headers=header,
+                                      json=json_dic,
+                                      verify=False)) as r:
+                if r.status_code != 202:
+                    self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+        except:
+            self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
+
+        return {
+                'name': username,
+                'auth_state': {
+                               'accesstoken': accesstoken,
+                               'refreshtoken': refreshtoken,
+                               'expire': expire,
+                               'oauth_user': resp_json,
+                               'scope': scope,
+                               'errormsg': ''
+                               }
+                }
+        
+    async def jscworkshop_authenticate(self, handler, uuidcode, data=None):
+        code = handler.get_argument("code")
+        http_client = AsyncHTTPClient()
+        params = dict(
+            redirect_uri=self.get_callback_url(None, "JSCWorkshop"),
+            code=code,
+            grant_type='authorization_code'
+        )
+        params.update(self.extra_params)
+
+        if self.jscldap_token_url:
+            url = self.jscworkshop_token_url
+        else:
+            raise ValueError("{} - Please set the JSCWORKSHOP_TOKEN_URL environment variable".format(uuidcode))
+
+        b64key = base64.b64encode(
+            bytes(
+                "{}:{}".format(self.jscworkshop_client_id, self.jscworkshop_client_secret),
+                "utf8"
+            )
+        )
+
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": self.j4j_user_agent,
+            "Authorization": "Basic {}".format(b64key.decode("utf8"))
+        }
+        req = HTTPRequest(url,
+                          method="POST",
+                          headers=headers,
+                          validate_cert=self.tls_verify,
+                          body=urllib.parse.urlencode(params)
+                          )
+
+        resp = await http_client.fetch(req)
+        resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+
+        accesstoken = resp_json.get('access_token', None)
+        refreshtoken = resp_json.get('refresh_token', None)
+        token_type = resp_json.get('token_type', None)
+        scope = resp_json.get('scope', '')
+        if (isinstance(scope, str)):
+            scope = scope.split(' ')
+
+        # Determine who the logged in user is
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": self.j4j_user_agent,
+            "Authorization": "{} {}".format(token_type, accesstoken)
+        }
+        if self.jscworkshop_userdata_url:
+            url = url_concat(self.jscworkshop_userdata_url, self.jscworkshop_userdata_params)
+        else:
+            raise ValueError("{} - Please set the JSCWORKSHOP_USERDATA_URL environment variable".format(uuidcode))
+
+        req = HTTPRequest(url,
+                          method=self.jscworkshop_userdata_method,
+                          headers=headers,
+                          validate_cert=self.tls_verify)
+        resp = await http_client.fetch(req)
+        resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+
+        if not resp_json.get(self.jscworkshop_username_key):
+            self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, self.jscworkshop_username_key, self.remove_secret(resp_json)))
+            return
+
+        if self.jscworkshop_tokeninfo_url:
+            url = self.jscworkshop_tokeninfo_url
+        else:
+            raise ValueError("{} - Please set the JSCWORKSHOP_TOKENINFO_URL environment variable".format(uuidcode))
+
+        req_exp = HTTPRequest(url,
+                              method=self.jscworkshop_tokeninfo_method,
+                              headers=headers,
+                              validate_cert=self.tls_verify)
+        resp_exp = await http_client.fetch(req_exp)
+        resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
+
+        if not resp_json_exp.get(self.jscworkshop_tokeninfo_exp_key):
+            self.log.error("{} - Tokeninfo contains no key {}: {}".format(uuidcode, self.jscworkshop_tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
+            return
+
+        expire = str(resp_json_exp.get(self.jscworkshop_tokeninfo_exp_key))
+        username = resp_json.get(self.jscworkshop_username_key).split('=')[1]
+        username = self.normalize_username(username)
+        self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(self.jscworkshop_username_key), username))
         self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
         try:
             with open(self.j4j_urls_paths, 'r') as f:
