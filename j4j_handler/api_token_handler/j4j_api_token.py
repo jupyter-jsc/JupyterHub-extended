@@ -46,15 +46,15 @@ class J4J_APITokenHandler(APIHandler):
                 if int(token.get('expire')) - time.time() < 480:
                     try:
                         self.log.debug("{} - {} - Try to update accesstoken".format(uuidcode, user.name))
-                        b64key = base64.b64encode(bytes('{}:{}'.format(user.authenticator.client_id, user.authenticator.client_secret), 'utf-8')).decode('utf-8')
+                        b64key = base64.b64encode(bytes('{}:{}'.format(user.authenticator.jscldap_client_id, user.authenticator.jscldap_client_secret), 'utf-8')).decode('utf-8')
                         accesstoken = token.get('accesstoken')
                         expire = token.get('expire')
                         data = {'refresh_token': token.get('refreshtoken'),
                                 'grant_type': 'refresh_token',
-                                'scope': ' '.join(user.authenticator.scope)}
+                                'scope': ' '.join(user.authenticator.jscldap_scope)}
                         headers = {'Authorization': 'Basic {}'.format(b64key),
                                    'Accept': 'application/json'}
-                        url = user.authenticator.token_url
+                        url = user.authenticator.jscldap_token_url
                         info_url = os.environ.get('OAUTH2_TOKENINFO_URL', '<no tokeninfo url in environment>')
                         with closing(requests.post(url, headers=headers, data=data, verify=False)) as r:
                             if r.status_code == 200:
