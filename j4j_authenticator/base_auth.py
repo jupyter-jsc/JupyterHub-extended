@@ -310,10 +310,15 @@ class BaseAuthenticator(GenericOAuthenticator):
     async def authenticate(self, handler, data=None):
         uuidcode = uuid.uuid4().hex
         self.log.debug("{} - Login attempt".format(uuidcode))
+        self.log.debug("{} - {}".format(uuidcode, handler))        
+        self.log.debug("{} - {}".format(uuidcode, dir(handler)))
+        self.log.debug("{} - {}".format(uuidcode, handler.__class__))
+        self.log.debug("{} - {}".format(uuidcode, dir(handler.__class__)))
+        self.log.debug("{} - {}".format(uuidcode, handler.__class__.__name__))
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
             return self.jscldap_authenticate(handler, uuidcode, data)
         else:
-            self.log.warning("Unknown CallbackHandler: {}".format(handler.__class__))
+            self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
             return "Username"
 
     def jscldap_authenticate(self, handler, uuidcode, data=None):
