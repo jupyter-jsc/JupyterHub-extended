@@ -26,7 +26,6 @@ class JSCLDAPEnvMixin(OAuth2Mixin):
 
 class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
     def get(self):
-        self.log.info(self.authenticator.__class__)
         redirect_uri = self.authenticator.get_callback_url(None, "JSCLDAP")
         self.log.info('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
@@ -47,7 +46,6 @@ class JSCWorkshopEnvMixin(OAuth2Mixin):
 
 class JSCWorkshopLoginHandler(OAuthLoginHandler, JSCWorkshopEnvMixin):
     def get(self):
-        self.log.info(self.authenticator.__class__)
         redirect_uri = self.authenticator.get_callback_url(None, "JSCWorkshop")
         self.log.info('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
@@ -621,7 +619,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             return
 
         expire = str(resp_json_exp.get(self.jscworkshop_tokeninfo_exp_key))
-        username = resp_json.get(self.jscworkshop_username_key).split('=')[1]
+        username = resp_json.get(self.jscworkshop_username_key).lower()
         username = self.normalize_username(username)
         self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(self.jscworkshop_username_key), username))
         self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
