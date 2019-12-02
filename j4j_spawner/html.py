@@ -18,8 +18,6 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
     html = '\n'
     if len(maintenance) > 0:
         html += '<h3 class="maintenance_j4j">The following systems are not available right now: {}</h3>\n'.format(', '.join(maintenance))
-    if no_hpc_info:
-        html += '<h3 class="no_hpc_info_j4j">It seems that you have no HPC accounts. If this is not correct, please contact <a href="mailto:ds-support@fz-juelich.de?subject=Jupyter@JSC Support&amp;body=Please describe your problem here. (english or german)">Jupyter@JSC support</a>.</h3>\n'
     script = '\n'
     # default values
     user_accs_w_docker = []
