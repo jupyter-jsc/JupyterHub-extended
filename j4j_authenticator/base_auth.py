@@ -58,7 +58,7 @@ class JSCWorkshopLoginHandler(OAuthLoginHandler, JSCWorkshopEnvMixin):
             response_type='code')
 
 
-class BaseAuthenticator(GenericOAuthenticator):    
+class BaseAuthenticator(GenericOAuthenticator):
     login_service = Unicode(
         "Jupyter@JSC Authenticator",
         config=True
@@ -393,8 +393,8 @@ class BaseAuthenticator(GenericOAuthenticator):
                 user.spawners.pop(name, None)
         for dirty_obj in user.db.dirty:
             self.log.debug("{} - Refresh {}".format(user.name, dirty_obj))
-            self.db.refresh(dirty_obj)            
-                    
+            self.db.refresh(dirty_obj)
+
     spawnable_dic = {}
     def spawnable(self, user_name, server_name):
         if user_name in self.spawnable_dic.keys() and server_name in self.spawnable_dic[user_name].keys():
@@ -406,14 +406,14 @@ class BaseAuthenticator(GenericOAuthenticator):
         uuidcode = uuid.uuid4().hex
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
             self.log.debug("{} - Call JSCLDAP_authenticate".format(uuidcode))
-            return await self.jscldap_authenticate(handler, uuidcode, data)        
+            return await self.jscldap_authenticate(handler, uuidcode, data)
         elif (handler.__class__.__name__ == "JSCWorkshopCallbackHandler"):
             self.log.debug("{} - Call JSCWorkshop_authenticate".format(uuidcode))
             return await self.jscworkshop_authenticate(handler, uuidcode, data)
         else:
             self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
             return "Username"
-        
+
     async def jscldap_authenticate(self, handler, uuidcode, data=None):
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
@@ -535,7 +535,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'errormsg': ''
                                }
                 }
-        
+
     async def jscworkshop_authenticate(self, handler, uuidcode, data=None):
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
@@ -619,7 +619,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             return
 
         expire = str(resp_json_exp.get(self.jscworkshop_tokeninfo_exp_key))
-        username = resp_json.get(self.jscworkshop_username_key).lower()
+        username = "{}@workshop.jsc".format(resp_json.get(self.jscworkshop_username_key)).lower()
         username = self.normalize_username(username)
         self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(self.jscworkshop_username_key), username))
         self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))

@@ -384,8 +384,8 @@ class J4J_Spawner(Spawner):
             self.user.db.commit()
 
     async def cancel(self, uuidcode, stopped):
-        self.log.info("{} - Cancel JupyterLab: {}".format(self._log_name.lower(), uuidcode))
         try:
+            self.log.info("{} - Cancel JupyterLab: {}".format(self._log_name.lower(), uuidcode))
             if str(type(self._spawn_future)) == "<class '_asyncio.Task'>" and self._spawn_future._state in ['PENDING']:
                 self.log.debug("{} - {} Spawner is pending, try to cancel".format(self._log_name.lower(), uuidcode))
                 self.stopped = False
