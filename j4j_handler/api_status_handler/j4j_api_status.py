@@ -94,14 +94,10 @@ class J4J_APIStatusHandler(APIHandler):
                     db_progs_no = 0
                 if status == 'submitunicorejob':
                     db_progs_no = 1
-                elif status == 'uploadfiles':
-                    db_progs_no = 2
-                elif status == 'jobstarted':
-                    db_progs_no = 3
                 elif status == 'waitforhostname':
-                    db_progs_no = 4
+                    db_progs_no = 2
                 elif status == 'running':
-                    db_progs_no = 5
+                    db_progs_no = 3
                     if db_spawner.state.get('sendmail', False):
                         #msg = MIMEMultipart()
                         msg = MIMEText("The JupyterLab you requested has finished the spawn progress. You can visit it directly here: https://jupyter-jsc.fz-juelich.de/user/{}/{} . Or via the Control-Panel at https://jupyter-jsc.fz-juelich.de".format(user.name, server_name))

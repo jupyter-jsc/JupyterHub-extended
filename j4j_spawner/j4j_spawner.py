@@ -44,12 +44,10 @@ class J4J_Spawner(Spawner):
     # Variables for the jupyter application
     job_status = None
     progs_messages_all = [
-                      {"progress": 15, "html_message": "Creating a <a href=\"https://www.unicore.eu\">UNICORE</a> Job." },
-                      {"progress": 30, "html_message": "Submitting Job to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
-                      {"progress": 45, "html_message": "Uploading mandatory files to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
-                      {"progress": 60, "html_message": "<a href=\"https://www.unicore.eu\">UNICORE</a> submitted Job to <system> for <account>:<project>." },
-                      {"progress": 75, "html_message": "Waiting until your <system>-Job is started." },
-                      {"progress": 90, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab."}
+                      {"progress": 20, "html_message": "Creating a <a href=\"https://www.unicore.eu\">UNICORE</a> Job." },
+                      {"progress": 40, "html_message": "Submitting Job to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
+                      {"progress": 60, "html_message": "Waiting until your <system>-Job is started." },
+                      {"progress": 80, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab."}
                      ]
     progs_no = 0
     db_progs_no = -1
@@ -102,7 +100,7 @@ class J4J_Spawner(Spawner):
 
     @async_generator
     async def progress(self):
-        while self.progs_no < 6:
+        while self.progs_no < 4:
             db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.name == self.name).filter(orm.Spawner.user_id == self.user.orm_user.id).first()
             if not db_spawner:
                 self.log.debug("{} - {} not found.".format(self._log_name.lower(), self.name))
