@@ -316,7 +316,7 @@ class J4J_Spawner(Spawner):
         self.user.db.refresh(db_spawner)
         self.log.debug("{} - Db_spawner_state: {}".format(uuidcode, db_spawner.state))
         self.load_state(db_spawner.state)
-        if self.job_status in ['running', 'createjob', 'submitunicorejob', 'uploadfiles', 'jobstarted', 'waitforhostname']:
+        if self.job_status in ['running', 'createjob', 'submitunicorejob', 'waitforhostname']:
             return None
         return 0
 
