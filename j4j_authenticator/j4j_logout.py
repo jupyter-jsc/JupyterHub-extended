@@ -30,6 +30,10 @@ class J4J_LogoutHandler(LogoutHandler):
                           'stopall': 'true',
                           'username': user.name,
                           'expire': state['expire']}
+                if state['login_handler'] == 'jscldap':
+                    header['revokeurl'] = os.environ.get('JSCLDAP_REVOKE_URL', '')
+                elif state['login_handler'] == 'jscworkshop':
+                    header['revokeurl'] = os.environ.get('JSCWORKSHOP_REVOKE_URL', '')
                 self.log.debug("{} - User Spawners: {}".format(uuidcode, user.spawners))
                 names = []
                 db_spawner_list = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == user.orm_user.id).all()
@@ -56,5 +60,6 @@ class J4J_LogoutHandler(LogoutHandler):
                 state['expire'] = ''
                 state['oauth_user'] = ''
                 state['scope'] = []
+                state['login_handler'] = ''
                 await user.save_auth_state(state)
         return

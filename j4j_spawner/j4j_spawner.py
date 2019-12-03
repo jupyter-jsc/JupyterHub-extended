@@ -264,7 +264,8 @@ class J4J_Spawner(Spawner):
                                            self.user_options.get('project'),
                                            self._log_name.lower(),
                                            self.user.escaped_name,
-                                           self.user.authenticator.orchestrator_token_path)
+                                           self.user.authenticator.orchestrator_token_path,
+                                           state.get('login_handler', ''))
         spawn_data = create_spawn_data(self._log_name.lower(),
                                        env,
                                        self.user_options.get('partition'),
