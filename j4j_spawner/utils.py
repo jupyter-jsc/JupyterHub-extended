@@ -23,19 +23,8 @@ def create_spawn_header(uuidcode, expire, refreshtoken, jhubtoken, accesstoken, 
         }
     if login_handler == 'jscldap':
         spawn_header['tokenurl'] = os.environ.get('JSCLDAP_TOKEN_URL', '')
-        spawn_header['tokeninfourl'] = os.environ.get('JSCLDAP_TOKENINFO_URL', '')
-        spawn_header['certpath'] = os.environ.get('JSCLDAP_CERT_PATH', '')
-        spawn_header['scope'] = os.environ.get('JSCLDAP_SCOPE', '')
     elif login_handler == 'jscworkshop':
         spawn_header['tokenurl'] = os.environ.get('JSCWORKSHOP_TOKEN_URL', '')
-        spawn_header['tokeninfourl'] = os.environ.get('JSCWORKSHOP_TOKENINFO_URL', '')
-        spawn_header['certpath'] = os.environ.get('JSCWORKSHOP_CERT_PATH', '')
-        spawn_header['scope'] = os.environ.get('JSCWORKSHOP_SCOPE', '')
-    else:
-        spawn_header['tokenurl'] = ''
-        spawn_header['tokeninfourl'] = ''
-        spawn_header['certpath'] = ''
-        spawn_header['scope'] = ''
     return spawn_header
 
 def create_spawn_data(servername, Environment, partition, reservation, Resources, system, Checkboxes):

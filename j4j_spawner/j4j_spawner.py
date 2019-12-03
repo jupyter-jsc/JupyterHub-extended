@@ -353,6 +353,10 @@ class J4J_Spawner(Spawner):
                   'expire': str(state.get('expire')),
                   'escapedusername': self.user.escaped_name,
                   'servername': self._log_name.lower()}
+        if state.get('login_handler') == 'jscldap':
+            header['tokenurl'] = self.user.authenticator.jscldap_token_url
+        elif state.get('login_handler') == 'jscworkshop':
+            header['tokenurl'] = self.user.authenticator.jscworkshop_token_url
         try:
             url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
             method = "DELETE"

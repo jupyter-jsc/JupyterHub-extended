@@ -31,9 +31,9 @@ class J4J_LogoutHandler(LogoutHandler):
                           'username': user.name,
                           'expire': state['expire']}
                 if state['login_handler'] == 'jscldap':
-                    header['revokeurl'] = os.environ.get('JSCLDAP_REVOKE_URL', '')
+                    header['tokenurl'] = os.environ.get('JSCLDAP_TOKEN_URL', '')
                 elif state['login_handler'] == 'jscworkshop':
-                    header['revokeurl'] = os.environ.get('JSCWORKSHOP_REVOKE_URL', '')
+                    header['tokenurl'] = os.environ.get('JSCWORKSHOP_TOKEN_URL', '')
                 self.log.debug("{} - User Spawners: {}".format(uuidcode, user.spawners))
                 names = []
                 db_spawner_list = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == user.orm_user.id).all()
