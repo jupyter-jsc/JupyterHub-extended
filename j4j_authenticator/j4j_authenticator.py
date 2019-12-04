@@ -311,7 +311,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             return "Username"
 
     async def jscldap_authenticate(self, handler, uuidcode, data=None):
-        with open(self.authenticator.unity_file, 'r') as f:
+        with open(self.unity_file, 'r') as f:
             unity = json.load(f)
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
@@ -432,7 +432,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 }
 
     async def jscworkshop_authenticate(self, handler, uuidcode, data=None):
-        with open(self.authenticator.unity_file, 'r') as f:
+        with open(self.unity_file, 'r') as f:
             unity = json.load(f)
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
