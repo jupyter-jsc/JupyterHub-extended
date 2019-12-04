@@ -55,6 +55,7 @@ class J4J_Spawner(Spawner):
     stopped = False
     uuidcode_tmp = None
     sendmail = False
+    login_handler = ''
 
     def clear_state(self):
         """clear any state (called after shutdown)"""
@@ -67,6 +68,7 @@ class J4J_Spawner(Spawner):
         self.stopped = False
         self.api_token = ''
         self.sendmail = False
+        self.login_handler = ''
 
     def load_state(self, state):
         """load state from the database"""
@@ -77,12 +79,14 @@ class J4J_Spawner(Spawner):
             self.hostname = state.get('hostname', None)
             self.api_token = state.get('api_token', '')
             self.sendmail = state.get('sendmail', False)
+            self.login_handler = state.get('loginhandler', '')
         else:
             self.job_status = None
             self.db_progs_no = -1
             self.hostname = None
             self.api_token = ''
             self.sendmail = False
+            self.login_handler = ''
 
     def get_state(self):
         """get the current state"""
@@ -92,6 +96,7 @@ class J4J_Spawner(Spawner):
         state['hostname'] = self.hostname
         state['api_token'] = self.api_token
         state['sendmail'] = self.sendmail
+        state['loginhandler'] = self.login_handler
         return state
 
     @property
@@ -273,6 +278,7 @@ class J4J_Spawner(Spawner):
                                        self.user_options.get('Resources', {}),
                                        self.user_options.get('system'),
                                        self.user_options.get('Checkboxes', []))
+        self.login_handler = state.get('login_handler', '')
 
         try:
             with open(self.user.authenticator.j4j_urls_paths, 'r') as f:
