@@ -2,6 +2,7 @@ from contextlib import closing
 import json
 import requests
 import uuid
+import os
 
 from jupyterhub.handlers import LogoutHandler
 from jupyterhub import orm

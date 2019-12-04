@@ -450,7 +450,7 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         b64key = base64.b64encode(
             bytes(
-                "{}:{}".format(unity[self.jscworkshop_token_url][client_id], unity[self.jscworkshop_token_url][client_secret]),
+                "{}:{}".format(unity[self.jscworkshop_token_url]['client_id'], unity[self.jscworkshop_token_url]['client_secret']),
                 "utf8"
             )
         )
@@ -510,7 +510,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             return
 
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
-        username = resp_json.get(username_key)).lower()
+        username = resp_json.get(username_key).lower()
         username = self.normalize_username(username)
         self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
         self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
