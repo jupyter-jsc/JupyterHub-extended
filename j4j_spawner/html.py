@@ -55,7 +55,7 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
         if "!!DISCLAIMER!!" in accounts.keys():
             # if we get the information from UNICORE/X we don't know which project has access to which partition
             disclaimer = True
-            accounts.remove("!!DISCLAIMER!!")
+            del accounts["!!DISCLAIMER!!"]
         t1, t2 = html_system('system_'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, disclaimer, system==sorted(user_accs.keys(), key=lambda s: s.casefold())[0])
         html += t1
         script += t2
