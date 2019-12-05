@@ -21,6 +21,11 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
     script = '\n'
     # default values
     user_accs_w_docker = []
+    disclaimer = {}
+    for system, accounts in user_accs.items():
+        if "!!DISCLAIMER!!" in accounts.keys():
+            disclaimer[system] = True
+            del accounts["!!DISCLAIMER!!"]            
     for key in sorted(user_accs.keys()):
         user_accs_w_docker.append(key)
     if len(dockerimagespath) > 0:
@@ -51,12 +56,7 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
     html += '  </div>\n'
     script += t2
     for system, accounts in user_accs.items():
-        disclaimer = False
-        if "!!DISCLAIMER!!" in accounts.keys():
-            # if we get the information from UNICORE/X we don't know which project has access to which partition
-            disclaimer = True
-            del accounts["!!DISCLAIMER!!"]
-        t1, t2 = html_system('system_'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, disclaimer, system==sorted(user_accs.keys(), key=lambda s: s.casefold())[0])
+        t1, t2 = html_system('system_'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, disclaimer.get(system, False), system==sorted(user_accs.keys(), key=lambda s: s.casefold())[0])
         html += t1
         script += t2
     t1, t2 = docker('system_Docker', dockerimages, docker_show, project_checkbox)
@@ -242,11 +242,10 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
     #t1, t2 = checkbox(system+'_loadmodules',"Load modules from ~/."+system.split('_')[1]+"_jupyter_modules.sh","With this option you can load additional modules.<br>Do not use \"module --force purge\" or similar commands!<br>Example for ~/."+system+"_jupyter_modules.sh:<br>\&emsp;module load mod1;<br>\&emsp;module load mod2;")
     #html += t1
     #script += t2
-    html += '  <p><font size="+1">\n'
-    html += '  Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a>\n'
+    html += '  <p><font size="+1">Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a>\n'
     if disclaimer:
-        html += '  <br>Please ensure that the project is able to use the partition.\n'
-    html += '  </font></p>\n'
+        html += '  <br>Please ensure that the project is able to use the partition.'
+    html += '  </font></p>'
     html += '</div>\n'
     return html, script
 
