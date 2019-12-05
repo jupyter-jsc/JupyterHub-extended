@@ -455,6 +455,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                       'username': username,
                       'expire': expire,
                       'tokenurl': self.jscldap_token_url,
+                      'authorizeurl': self.jscldap_token_url,
                       'allbutthese': 'true' }
             url = j4j_paths.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
             with closing(requests.post(url,
@@ -597,6 +598,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                       'username': username,
                       'expire': expire,
                       'tokenurl': self.jscworkshop_token_url,
+                      'authorizeurl': self.jscworkshop_token_url,
                       'allbutthese': 'true' }
             url = j4j_paths.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
             with closing(requests.post(url,
