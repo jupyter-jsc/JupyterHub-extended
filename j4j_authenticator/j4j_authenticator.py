@@ -682,6 +682,8 @@ class BaseAuthenticator(GenericOAuthenticator):
                         if r.status_code == 200:
                             self.log.info("{} - Received !{}! as hpc infos".format(r.status_code, r.json()))
                             ret = fit_partition(r.json(), self.resources)
+                            for machine in ret.keys():
+                                ret[machine]["!!DISCLAIMER!!"] = {}
                             self.log.info("{} - Update to : {}".format(uuidcode, ret))
                             return ret
                         else:
