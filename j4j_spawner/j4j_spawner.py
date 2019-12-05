@@ -428,7 +428,7 @@ class J4J_Spawner(Spawner):
             state = await self.user.get_auth_state()
             user_dic = state.get('user_dic', {})
             tunnel_token = get_token(self.user.authenticator.tunnel_token_path)
-            maintenance = get_maintenance(user_dic.keys(), self.user.authenticator.resources, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
+            maintenance = get_maintenance(user_dic.keys(), self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
                 self.log.info("{} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
             reservations_var = reservations(user_dic, self.reservation_paths)
