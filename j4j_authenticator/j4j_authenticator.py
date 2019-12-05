@@ -38,7 +38,7 @@ class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
         self.authorize_redirect(
             redirect_uri=redirect_uri,
             client_id=unity[self.authenticator.jscldap_token_url]['client_id'],
-            scope=unity[self.authenticator.jscldap_token_url]['scope'],
+            scope=unity[self.authenticator.jscldap_authorize_url]['scope'],
             extra_params={'state': state},
             response_type='code')
 
@@ -60,7 +60,7 @@ class JSCWorkshopLoginHandler(OAuthLoginHandler, JSCWorkshopEnvMixin):
         self.authorize_redirect(
             redirect_uri=redirect_uri,
             client_id=unity[self.authenticator.jscworkshop_token_url]['client_id'],
-            scope=unity[self.authenticator.jscworkshop_token_url]['scope'],
+            scope=unity[self.authenticator.jscworkshop_authorize_url]['scope'],
             extra_params={'state': state},
             response_type='code')
 
@@ -96,6 +96,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         help="Access token endpoint URL for JSCLdap"
     )
 
+    jscldap_authorize_url = Unicode(
+        os.environ.get('JSCLDAP_AUTHORIZE_URL', ''),
+        config=True,
+        help="Authorize URL for JSCLdap Login"
+    )
+
     jscworkshop_callback_url = Unicode(
         os.getenv('JSCWORKSHOP_CALLBACK_URL', ''),
         config=True,
@@ -107,6 +113,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         os.environ.get('JSCWORKSHOP_TOKEN_URL', ''),
         config=True,
         help="Access token endpoint URL for JSCWorkshop"
+    )
+
+    jscworkshop_authorize_url = Unicode(
+        os.environ.get('JSCWORKSHOP_AUTHORIZE_URL', ''),
+        config=True,
+        help="Authorize URL for JSCWorkshop Login"
     )
 
     hpc_infos_key = Unicode(
@@ -407,7 +419,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
 
-        username_key = unity[self.jscldap_token_url]['username_key']
+        username_key = unity[self.jscldap_authorize_url]['username_key']
 
         if not resp_json.get(username_key):
             self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
@@ -550,7 +562,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
 
-        username_key = unity[self.jscworkshop_token_url]['username_key']
+        username_key = unity[self.jscworkshop_authorize_url]['username_key']
         if not resp_json.get(username_key):
             self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
             return
