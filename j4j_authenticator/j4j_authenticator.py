@@ -114,12 +114,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         config=True,
         help="Userdata hpc_infos key from returned json for USERDATA_URL"
     )
-    
+
     hpc_infos_ssh_key = Unicode(
         config=True,
         help=''
     )
-    
+
     hpc_infos_ssh_user = Unicode(
         config=True,
         help=''
@@ -129,7 +129,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         config=True,
         help=''
     )
-    
+
     hpc_infos_add_queues = List(
         config=True,
         help='',
@@ -456,8 +456,8 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
-        self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
-        
+        #self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+
         # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
         # Since the information from Unity and ssh are identical, it makes no sense to do it if len(hpc_infos) != 0
         if len(hpc_infos) == 0:
@@ -467,14 +467,14 @@ class BaseAuthenticator(GenericOAuthenticator):
                 self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
             except:
                 self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
-        
+
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
         user_accs = get_user_dic(hpc_infos, self.resources)
 
         # Check for HPC Systems in self.unicore, if username is in self.unicore_user
         user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken, refreshtoken, expire))
 
-        self.log.info("{} - Save HPC Infos as dic {}".format(uuidcode, user_accs))
+        #self.log.info("{} - Save HPC Infos as dic {}".format(uuidcode, user_accs))
         return {
                 'name': username,
                 'auth_state': {
@@ -595,11 +595,11 @@ class BaseAuthenticator(GenericOAuthenticator):
                     self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
         except:
             self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
-            
+
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
-        self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
-        
+        #self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+
         # If it's empty and the username is an email address (and no train account) we can check for it via ssh
         if len(hpc_infos) == 0:
             pattern = re.compile("^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$")
@@ -610,7 +610,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                     self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
                 except:
                     self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
-        
+
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
         user_accs = get_user_dic(hpc_infos, self.resources)
 
@@ -639,17 +639,19 @@ class BaseAuthenticator(GenericOAuthenticator):
                 orchestrator_token = f.read().rstrip()
             with open(self.unicore_user, 'r') as f:
                 unicore_user_file = json.load(f)
+            self.log.info("{} - Is user ({}) in userlist: {}".format(uuidcode, username, unicore_user_file))
             if username in unicore_user_file.get('userlist', []):
                 with open(self.unicore, 'r') as f:
                     unicore_file = json.load(f)
                 machine_list = unicore_file.get('machines', [])
-                # remove machines that are already served via Unity or ssh                
+                # remove machines that are already served via Unity or ssh
+                self.log.info("{} - Check user_acc keys: {}".format(uuidcode, user_accs.keys()))
                 for m in user_accs.keys():
                     if m in machine_list:
+                        self.log.info("{} - Remove: {}".format(uuidcode, m))
                         machine_list.remove(m)
                 if len(machine_list) > 0:
                     machines = ' '.join(machine_list)
-                    
                     header = {'Accept': "application/json",
                               'Intern-Authorization': orchestrator_token,
                               'uuidcode': uuidcode,
@@ -659,6 +661,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                               'expire': expire,
                               'machines': machines}
                     url = j4j_paths.get('orchestrator', {}).get('url_unicorex', '<no_url_found>')
+                    self.log.info("{} - GET to {} url with {}".format(uuidcode, url, header))
                     with closing(requests.get(url,
                                               headers=header,
                                               verify=False)) as r:
