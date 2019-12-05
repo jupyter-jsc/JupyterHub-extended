@@ -242,9 +242,11 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
     #t1, t2 = checkbox(system+'_loadmodules',"Load modules from ~/."+system.split('_')[1]+"_jupyter_modules.sh","With this option you can load additional modules.<br>Do not use \"module --force purge\" or similar commands!<br>Example for ~/."+system+"_jupyter_modules.sh:<br>\&emsp;module load mod1;<br>\&emsp;module load mod2;")
     #html += t1
     #script += t2
-    html += '  <font size="+1">Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a></font>\n'
+    html += '  <font size="+1">\n'
+    html += '  <p>Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a></p>\n'
     if disclaimer:
-        html += '  <font size="+1">Please ensure that the project is able to use the partition.</font>\n'
+        html += '  <p>Please ensure that the project is able to use the partition.</p>\n'
+    html += '  </font>\n'
     html += '</div>\n'
     return html, script
 
