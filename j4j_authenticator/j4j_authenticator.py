@@ -4,6 +4,7 @@ import base64
 import urllib
 import json
 import requests
+import re
 
 from contextlib import closing
 from subprocess import STDOUT, check_output, CalledProcessError
@@ -454,7 +455,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
 
         # collect hpc infos with the known ways
-        hpc_infos = resp_json.get(self.authenticator.hpc_infos_key, '')
+        hpc_infos = resp_json.get(self.hpc_infos_key, '')
         self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
         
         # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
@@ -594,6 +595,27 @@ class BaseAuthenticator(GenericOAuthenticator):
                     self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
         except:
             self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
+            
+        # collect hpc infos with the known ways
+        hpc_infos = resp_json.get(self.hpc_infos_key, '')
+        self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+        
+        # If it's empty and the username is an email address (and no train account) we can check for it via ssh
+        if len(hpc_infos) == 0:
+            pattern = re.compile("^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$")
+            if pattern.match(username):
+                try:
+                    self.log.info("{} - Try to get HPC_Infos via ssh".format(uuidcode))
+                    hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
+                    self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
+                except:
+                    self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
+        
+        # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
+        user_accs = get_user_dic(hpc_infos, self.resources)
+
+        # Check for HPC Systems in self.unicore, if username is in self.unicore_user
+        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken, refreshtoken, expire))
 
         return {
                 'name': username,
@@ -602,6 +624,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'refreshtoken': refreshtoken,
                                'expire': expire,
                                'oauth_user': resp_json,
+                               'user_dic': user_accs,
                                'scope': scope,
                                'login_handler': 'jscworkshop',
                                'errormsg': ''
