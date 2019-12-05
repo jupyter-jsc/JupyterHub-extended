@@ -244,7 +244,7 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
     #script += t2
     html += '  <font size="+1">Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a></font>\n'
     if disclaimer:
-        html += '  <font_size="+1">Please ensure that the project is able to use the partition.</font>\n'
+        html += '  <font size="+1">Please ensure that the project is able to use the partition.</font>\n'
     html += '</div>\n'
     return html, script
 
