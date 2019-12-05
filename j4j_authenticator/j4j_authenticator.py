@@ -18,7 +18,7 @@ from oauthenticator.oauth2 import OAuthLoginHandler, OAuthCallbackHandler
 from oauthenticator.generic import GenericOAuthenticator
 
 from .j4j_logout import J4J_LogoutHandler
-from .utils import get_user_dic
+from .utils import get_user_dic, fit_partition
 
 class JSCLDAPCallbackHandler(OAuthCallbackHandler):
     pass
@@ -485,8 +485,9 @@ class BaseAuthenticator(GenericOAuthenticator):
         user_accs = get_user_dic(hpc_infos, self.resources)
 
         # Check for HPC Systems in self.unicore, if username is in self.unicore_user
-        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken, refreshtoken, expire))
-
+        self.log.info("{} - User Accs before UNICOREX : {}".format(uuidcode, user_accs))
+        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken))
+        self.log.info("{} - User Accs after UNICOREX : {}".format(uuidcode, user_accs))
         #self.log.info("{} - Save HPC Infos as dic {}".format(uuidcode, user_accs))
         return {
                 'name': username,
@@ -629,8 +630,9 @@ class BaseAuthenticator(GenericOAuthenticator):
         user_accs = get_user_dic(hpc_infos, self.resources)
 
         # Check for HPC Systems in self.unicore, if username is in self.unicore_user
-        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken, refreshtoken, expire))
-
+        self.log.info("{} - User Accs before UNICOREX : {}".format(uuidcode, user_accs))
+        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken))
+        self.log.info("{} - User Accs afer UNICOREX : {}".format(uuidcode, user_accs))
         return {
                 'name': username,
                 'auth_state': {
@@ -645,7 +647,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                }
                 }
 
-    def get_hpc_infos_via_unicorex(self, uuidcode, username, user_accs, accesstoken, refreshtoken, expire):
+    def get_hpc_infos_via_unicorex(self, uuidcode, username, user_accs, accesstoken):
         try:
             with open(self.j4j_urls_paths, 'r') as f:
                 j4j_paths = json.load(f)
@@ -671,8 +673,6 @@ class BaseAuthenticator(GenericOAuthenticator):
                               'uuidcode': uuidcode,
                               "User-Agent": self.j4j_user_agent,
                               'accesstoken': accesstoken,
-                              'refreshtoken': refreshtoken,
-                              'expire': expire,
                               'machines': machines}
                     url = j4j_paths.get('orchestrator', {}).get('url_unicorex', '<no_url_found>')
                     self.log.info("{} - GET to {} url with {}".format(uuidcode, url, header))
@@ -681,11 +681,14 @@ class BaseAuthenticator(GenericOAuthenticator):
                                               verify=False)) as r:
                         if r.status_code == 200:
                             self.log.info("{} - Received !{}! as hpc infos".format(r.status_code, r.json()))
-                            return r.json()
+                            ret = fit_partition(r.json(), self.resources)
+                            self.log.info("{} - Update to : {}".format(uuidcode, ret))
+                            return ret
                         else:
                             self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
         except:
             self.log.exception("{} - Could not check for other HPC accounts via UNICORE/X for {}".format(uuidcode, username))
+        
         return {}
 
     def get_hpc_infos_via_ssh(self, uuidcode, username):
