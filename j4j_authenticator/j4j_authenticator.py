@@ -6,7 +6,8 @@ import json
 import requests
 
 from contextlib import closing
-from traitlets import Unicode, Bool, List, Dict
+from subprocess import STDOUT, check_output, CalledProcessError
+from traitlets import Unicode, Bool, List
 from jupyterhub import orm
 from jupyterhub.objects import Server
 from tornado.auth import OAuth2Mixin
@@ -16,6 +17,7 @@ from oauthenticator.oauth2 import OAuthLoginHandler, OAuthCallbackHandler
 from oauthenticator.generic import GenericOAuthenticator
 
 from .j4j_logout import J4J_LogoutHandler
+from .utils import get_user_dic
 
 class JSCLDAPCallbackHandler(OAuthCallbackHandler):
     pass
@@ -111,6 +113,27 @@ class BaseAuthenticator(GenericOAuthenticator):
         config=True,
         help="Userdata hpc_infos key from returned json for USERDATA_URL"
     )
+    
+    hpc_infos_ssh_key = Unicode(
+        config=True,
+        help=''
+    )
+    
+    hpc_infos_ssh_user = Unicode(
+        config=True,
+        help=''
+    )
+
+    hpc_infos_ssh_host = Unicode(
+        config=True,
+        help=''
+    )
+    
+    hpc_infos_add_queues = List(
+        config=True,
+        help='',
+        default_value=[]
+    )
 
     j4j_urls_paths = Unicode(
         os.environ.get('OAUTH2_J4J_URLS_PATHS', ''),
@@ -124,10 +147,22 @@ class BaseAuthenticator(GenericOAuthenticator):
         help="User-Agent variable for communications"
     )
 
-    partitions_path = Unicode( # Used outside Authenticator
-        os.environ.get('PARTITIONS_PATH', ''),
+    resources = Unicode( # Used outside Authenticator
+        os.environ.get('RESOURCES_PATH', ''),
         config = True,
         help = "Path to the filled_resources file"
+    )
+
+    unicore = Unicode( # used outside Authenticator
+        os.environ.get('UNICORE_PATH', ''),
+        config = True,
+        help = "Path to the unicore.json file"
+    )
+
+    unicore_user = Unicode( # used outside Authenticator
+        os.environ.get('UNICORE_USER_PATH', ''),
+        config = True,
+        help = "Path to the unicore_user.json file"
     )
 
     proxy_secret = Unicode( # Used outside Authenticator
@@ -418,6 +453,27 @@ class BaseAuthenticator(GenericOAuthenticator):
         except:
             self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
 
+        # collect hpc infos with the known ways
+        hpc_infos = resp_json.get(self.authenticator.hpc_infos_key, '')
+        self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+        
+        # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
+        # Since the information from Unity and ssh are identical, it makes no sense to do it if len(hpc_infos) != 0
+        if len(hpc_infos) == 0:
+            try:
+                self.log.info("{} - Try to get HPC_Infos via ssh".format(uuidcode))
+                hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
+                self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
+            except:
+                self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
+        
+        # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
+        user_accs = get_user_dic(hpc_infos, self.resources)
+
+        # Check for HPC Systems in self.unicore, if username is in self.unicore_user
+        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken, refreshtoken, expire))
+
+        self.log.info("{} - Save HPC Infos as dic {}".format(uuidcode, user_accs))
         return {
                 'name': username,
                 'auth_state': {
@@ -425,6 +481,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'refreshtoken': refreshtoken,
                                'expire': expire,
                                'oauth_user': resp_json,
+                               'user_dic': user_accs,
                                'scope': scope,
                                'login_handler': 'jscldap',
                                'errormsg': ''
@@ -550,3 +607,82 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'errormsg': ''
                                }
                 }
+
+    def get_hpc_infos_via_unicorex(self, uuidcode, username, user_accs, accesstoken, refreshtoken, expire):
+        try:
+            with open(self.j4j_urls_paths, 'r') as f:
+                j4j_paths = json.load(f)
+            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
+                orchestrator_token = f.read().rstrip()
+            with open(self.unicore_user, 'r') as f:
+                unicore_user_file = json.load(f)
+            if username in unicore_user_file.get('userlist', []):
+                with open(self.unicore, 'r') as f:
+                    unicore_file = json.load(f)
+                machine_list = unicore_file.get('machines', [])
+                # remove machines that are already served via Unity or ssh                
+                for m in user_accs.keys():
+                    if m in machine_list:
+                        machine_list.remove(m)
+                if len(machine_list) > 0:
+                    machines = ' '.join(machine_list)
+                    
+                    header = {'Accept': "application/json",
+                              'Intern-Authorization': orchestrator_token,
+                              'uuidcode': uuidcode,
+                              "User-Agent": self.j4j_user_agent,
+                              'accesstoken': accesstoken,
+                              'refreshtoken': refreshtoken,
+                              'expire': expire,
+                              'machines': machines}
+                    url = j4j_paths.get('orchestrator', {}).get('url_unicorex', '<no_url_found>')
+                    with closing(requests.get(url,
+                                              headers=header,
+                                              verify=False)) as r:
+                        if r.status_code == 200:
+                            self.log.info("{} - Received !{}! as hpc infos".format(r.status_code, r.json()))
+                            return r.json()
+                        else:
+                            self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+        except:
+            self.log.exception("{} - Could not check for other HPC accounts via UNICORE/X for {}".format(uuidcode, username))
+        return {}
+
+    def get_hpc_infos_via_ssh(self, uuidcode, username):
+        if username[-len("@fz-juelich.de"):] == '@fz-juelich.de':
+            username = username[:-len("@fz-juelich.de")]
+        cmd = ['ssh', '-i', self.hpc_infos_ssh_key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', '{}@{}'.format(self.hpc_infos_ssh_user, self.hpc_infos_ssh_host), username]
+        try:
+            output = check_output(cmd, stderr=STDOUT, timeout=3, universal_newlines=True)
+        except CalledProcessError:
+            self.log.exception("{} - No HPC infos for {}".format(uuidcode, username))
+            return []
+        hpc_infos = output.strip().split('\n')
+        self.log.info("{} - Bare HPC_Infos: {}".format(uuidcode, hpc_infos))
+        additional_lines = []
+        try:
+            if len(self.hpc_infos_add_queues) > 0:
+                queues = {}
+                for queue in self.hpc_infos_add_queues:
+                    system, partition = queue.split('_')
+                    if system not in queues.keys():
+                        queues[system] = []
+                    queues[system].append(partition)
+                system_project = {}
+                for entry in hpc_infos:
+                    name, system, project, mail = entry.split(',')
+                    if '_' in system:
+                        split = system.split('_')
+                        system = split[0]
+                    if system not in system_project:
+                        system_project[system] = []
+                    if project in system_project[system]:
+                        continue
+                    for queue in queues.get(system, []):
+                        additional_lines.append('{},{}_{},{},{}'.format(name, system, queue, project, mail))
+                    system_project[system].append(project)
+                hpc_infos.extend(additional_lines)
+        except:
+            self.log.exception("{} - Could not add additional queues ({}) to hpc_infos of user {}".format(uuidcode, self.hpc_infos_add_queues, username))
+        self.log.info("{} - Return: {}".format(uuidcode, hpc_infos))
+        return hpc_infos

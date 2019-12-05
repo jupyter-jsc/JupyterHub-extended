@@ -10,7 +10,7 @@ colon = '--colon--' # replace : with --colon-- in variable names
 slash = '--slash--' # "
 dot = '--dot--'     # "
 
-def create_html(user_accs, reservations, partitions_path, stylepath, dockerimagespath, project_checkbox_path, maintenance, no_hpc_info=False):
+def create_html(user_accs, reservations, partitions_path, stylepath, dockerimagespath, project_checkbox_path, maintenance):
     with open(partitions_path) as f:
         resources_json = json.load(f)
     with open(project_checkbox_path) as f:
@@ -51,7 +51,12 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
     html += '  </div>\n'
     script += t2
     for system, accounts in user_accs.items():
-        t1, t2 = html_system('system_'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, system==sorted(user_accs.keys(), key=lambda s: s.casefold())[0])
+        disclaimer = False
+        if "!!DISCLAIMER!!" in accounts.keys():
+            # if we get the information from UNICORE/X we don't know which project has access to which partition
+            disclaimer = True
+            accounts.remove("!!DISCLAIMER!!")
+        t1, t2 = html_system('system_'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, system==sorted(user_accs.keys(), disclaimer, key=lambda s: s.casefold())[0])
         html += t1
         script += t2
     t1, t2 = docker('system_Docker', dockerimages, docker_show, project_checkbox)
@@ -140,15 +145,15 @@ def function_hide_all(user_accs, reservations):
     return script
 
 
-def html_system(system, accounts, resources_filled, reservations, project_checkbox, show=False):
+def html_system(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show=False):
     html  = ''
     script = ''
-    t1, t2 = dropdowns(system, accounts, resources_filled, reservations, project_checkbox, show)
+    t1, t2 = dropdowns(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show)
     html += t1
     script += t2
     return (html, script)
 
-def dropdowns(system, accounts, resources_filled, reservations, project_checkbox, show=False):
+def dropdowns(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show=False):
     html  = ''
     script = ''
     system_name_list = system.split('_')
@@ -238,6 +243,8 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
     #html += t1
     #script += t2
     html += '  <font size="+1">Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a></font>\n'
+    if disclaimer:
+        html += '  <font_size="+1">Please ensure that the project is able to use the partition.</font>\n'
     html += '</div>\n'
     return html, script
 

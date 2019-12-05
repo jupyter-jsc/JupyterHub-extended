@@ -9,11 +9,10 @@ import uuid
 import json
 import socket
 
-from traitlets import Unicode, Dict, List
+from traitlets import Unicode, Dict
 from asyncio import sleep
 from datetime import datetime
 from contextlib import closing
-from subprocess import STDOUT, check_output, CalledProcessError
 
 from async_generator import async_generator, yield_
 
@@ -22,23 +21,20 @@ from jupyterhub import orm
 from jupyterhub.utils import url_path_join
 
 
-from .utils import get_user_dic, reservations, create_spawn_data, create_spawn_header
+from .utils import reservations, create_spawn_data, create_spawn_header
 from .html import create_html
 from .communication import j4j_orchestrator_request
 from .file_loads import get_token
+from j4j_spawner.utils import get_maintenance
 
 class J4J_Spawner(Spawner):
     # Variables for the options_form
     #partitions_path = Unicode(config=True, help='')
     reservation_paths = Dict(config=True, help='')
     style_path = Unicode(config=True, help='')
-    nodes_path = Unicode(config=True, help='')
     dockerimages_path = Unicode(config=True, help='')
     project_checkbox_path = Unicode(config=True, help='')
-    hpc_infos_ssh_key = Unicode(config=True, help='')
-    hpc_infos_ssh_user = Unicode(config=True, help='')
-    hpc_infos_ssh_host = Unicode(config=True, help='')
-    hpc_infos_add_queues = List(config=True, help='', default_value=[])
+    nodes_path = Unicode(config=True, help='')
     html_code = ""
 
     # Variables for the jupyter application
@@ -430,112 +426,14 @@ class J4J_Spawner(Spawner):
                 self.user.db.refresh(db_user)
                 self.user.encrypted_auth_state = db_user.encrypted_auth_state
             state = await self.user.get_auth_state()
-            hpc_infos = state.get('oauth_user').get(self.user.authenticator.hpc_infos_key, '')
-            self.log.info("{} - HPC_Infos: {}".format(self._log_name.lower(), hpc_infos))
-            if len(hpc_infos) == 0:
-                try:
-                    self.log.info("{} - Try to get HPC_Infos via ssh".format(self._log_name.lower()))
-                    hpc_infos = self.get_hpc_infos_via_ssh()
-                    self.log.info("{} - HPC_Infos afterwards: {}".format(self._log_name.lower(), hpc_infos))
-                except:
-                    self.log.exception("{} - Could not get HPC information via ssh for user {}".format(self._log_name.lower(), self.user.name))
-            #if len(hpc_infos) == 0:
-            #    raise Exception("We have no information about your HPC accounts. Please logout and login again.")
+            user_dic = state.get('user_dic', {})
             tunnel_token = get_token(self.user.authenticator.tunnel_token_path)
-            user_accs, maintenance = get_user_dic(hpc_infos, self.user.authenticator.partitions_path, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
+            maintenance = get_maintenance(user_dic.keys(), self.user.authenticator.resources, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
                 self.log.info("{} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
-            reservations_var = reservations(user_accs, self.reservation_paths)
-            self.html_code = create_html(user_accs, reservations_var, self.user.authenticator.partitions_path, self.style_path, self.dockerimages_path, self.project_checkbox_path, maintenance, len(hpc_infos)==0)
+            reservations_var = reservations(user_dic, self.reservation_paths)
+            self.html_code = create_html(user_dic, reservations_var, self.user.authenticator.resources, self.style_path, self.dockerimages_path, self.project_checkbox_path, maintenance)
         except Exception:
             self.log.exception("Could not build html page")
             #self.log.exception("{} - Could not build html page".format(self._log_name.lower()))
         return self.html_code
-
-    def get_hpc_infos_via_ssh(self):
-        username = self.user.name
-        if username[-len("@fz-juelich.de"):] == '@fz-juelich.de':
-            username = username[:-len("@fz-juelich.de")]
-        cmd = ['ssh', '-i', self.hpc_infos_ssh_key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', '{}@{}'.format(self.hpc_infos_ssh_user, self.hpc_infos_ssh_host), username]
-        try:
-            output = check_output(cmd, stderr=STDOUT, timeout=3, universal_newlines=True)
-        except CalledProcessError:
-            self.log.exception("{} - No HPC infos for {}".format(self._log_name.lower(), self.user.name))
-            return []
-        hpc_infos = output.strip().split('\n')
-        self.log.info("{} - Bare HPC_Infos: {}".format(self._log_name.lower(), hpc_infos))
-        additional_lines = []
-        try:
-            if len(self.hpc_infos_add_queues) > 0:
-                queues = {}
-                for queue in self.hpc_infos_add_queues:
-                    system, partition = queue.split('_')
-                    if system not in queues.keys():
-                        queues[system] = []
-                    queues[system].append(partition)
-                system_project = {}
-                for entry in hpc_infos:
-                    name, system, project, mail = entry.split(',')
-                    if '_' in system:
-                        split = system.split('_')
-                        system = split[0]
-                    if system not in system_project:
-                        system_project[system] = []
-                    if project in system_project[system]:
-                        continue
-                    for queue in queues.get(system, []):
-                        additional_lines.append('{},{}_{},{},{}'.format(name, system, queue, project, mail))
-                    system_project[system].append(project)
-                hpc_infos.extend(additional_lines)
-        except:
-            self.log.exception("{} - Could not add additional queues ({}) to hpc_infos of user {}".format(self._log_name.lower(), self.hpc_infos_add_queues, self.user.name))
-        self.log.info("{} - Return: {}".format(self._log_name.lower(), hpc_infos))
-        return hpc_infos
-
-    def options_from_form(self, form_data):
-        ret = {}
-        with open(self.project_checkbox_path, 'r') as f:
-            project_cb_dict = json.load(f)
-        with open(self.user.authenticator.partitions_path, 'r') as f:
-            filled_resources = json.load(f)
-        self.log.debug("{} - form_data: {}".format(self.user.name, form_data))
-        ret['system'] = form_data.get('system_input')[0]
-        ret['account'] = form_data.get('account_input')[0]
-        ret['sendmail'] = 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name='sendmail') in form_data.keys()
-        if ret['system'].upper() == 'DOCKER':
-            self.http_timeout = 30
-            for checkbox_name, checkbox_info in project_cb_dict.get('ALL', {}).items():
-                if checkbox_info.get('docker', 'false').lower() == 'true':
-                    if 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name=checkbox_name) in form_data.keys():
-                        if len(checkbox_info.get('scriptpath')) > 0:
-                            ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
-            return ret
-        ret['project'] = form_data.get('project_input')[0]
-        ret['partition'] = form_data.get('partition_input')[0]
-        ret['reservation'] = form_data.get('reservation_input')[0]
-        if ret['reservation'] == "undefined":
-            ret['reservation'] = None
-        # Checkboxen
-        ret['Checkboxes'] = []
-        for checkbox_name, checkbox_info in project_cb_dict.get(ret['system'], {}).items():
-            if 'system_{system}_{account}_{project}_{checkbox_name}_name'.format(system=ret['system'], account=ret['account'], project=ret['project'], checkbox_name=checkbox_name) in form_data.keys():
-                if len(checkbox_info.get('scriptpath')) > 0:
-                    ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
-        for checkbox_name, checkbox_info in project_cb_dict.get('ALL', {}).items():
-            if 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name=checkbox_name) in form_data.keys():
-                if len(checkbox_info.get('scriptpath')) > 0:
-                    ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
-        if ret['partition'] == 'LoginNode':
-            self.http_timeout = 180
-            return ret
-        # Resources
-        ret['Resources'] = {}
-        for key, value in form_data.items():
-            s = 'system_{system}_{account}_{project}_{partition}_'.format(system=ret['system'], account=ret['account'], project=ret['project'], partition=ret['partition'])
-            if key[:len(s)] == s:
-                ret['Resources'][key[len(s):-len('_name')]] = int(int(value[0])*filled_resources.get(ret['system']).get(ret['partition']).get(key[len(s):-len('_name')]).get('DIVISOR', 1))
-        try:
-            self.http_timeout = int(ret['Resources']['Runtime'])*60
-        except:
-            self.http_timeout = 180
-        return ret

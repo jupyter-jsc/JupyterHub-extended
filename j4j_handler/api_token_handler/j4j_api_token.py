@@ -7,7 +7,6 @@ import json
 import uuid
 import base64
 import time
-import os
 import requests
 
 from contextlib import closing
