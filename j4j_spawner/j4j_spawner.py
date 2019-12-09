@@ -445,7 +445,7 @@ class J4J_Spawner(Spawner):
         ret = {}
         with open(self.project_checkbox_path, 'r') as f:
             project_cb_dict = json.load(f)
-        with open(self.user.authenticator.partitions_path, 'r') as f:
+        with open(self.user.authenticator.resources, 'r') as f:
             filled_resources = json.load(f)
         self.log.debug("{} - form_data: {}".format(self.user.name, form_data))
         ret['system'] = form_data.get('system_input')[0]
