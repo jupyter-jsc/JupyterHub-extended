@@ -292,9 +292,10 @@ class BaseAuthenticator(GenericOAuthenticator):
             if name not in user.spawners.keys():
                 #self.log.debug("{} - Create wrapper for {}".format(user.name, name))
                 user.spawners[name] = user._new_spawner(name)
-                self.log.debug("DEBUG139014 - {}".format(user.spawners[name].name))
-                user.spawners[name].orm_spawner = user._new_orm_spawner(name)
-                self.log.debug("DEBUG139014 - {}".format(user.spawners[name].name))
+                if not user.spawners[name].name:
+                    db_spawner_tmp = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).filter(orm.Spawner.name == name).first()
+                    user.spawners[name].orm_spawner = db_spawner_tmp
+                    self.log.debug("DEBUG1390142 - {}".format(user.spawners[name].name))
             # get wrapper if it exists (server may be active)
             user.spawners[name].load_state(spawner[name]['state'])
             if user.spawners[name].active:
