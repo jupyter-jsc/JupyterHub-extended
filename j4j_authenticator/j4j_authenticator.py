@@ -690,7 +690,6 @@ class BaseAuthenticator(GenericOAuthenticator):
                             self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
         except:
             self.log.exception("{} - Could not check for other HPC accounts via UNICORE/X for {}".format(uuidcode, username))
-        
         return {}
 
     def get_hpc_infos_via_ssh(self, uuidcode, username):

@@ -412,8 +412,8 @@ class J4J_Spawner(Spawner):
 
     async def get_options_form(self):
         try:
-            #if not self.name:
-            #    raise Exception("{} - Do not allow to start without a name".format(self._log_name.lower()))
+            if not self.name:
+                raise Exception("{} - Do not allow to start without a name".format(self._log_name.lower()))
             db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
             if db_spawner:
                 self.user.db.refresh(db_spawner)
