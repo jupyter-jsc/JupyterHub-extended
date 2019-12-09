@@ -170,6 +170,7 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                 route_as_list = list(filter(None, routespec.split('/')))
                 route_user = None
                 route_servername = None
+                spawn_skip = False
                 try:
                     self.log.debug("Route as List: {}".format(route_as_list))
                     if route_as_list[0] == 'integration':
@@ -187,10 +188,12 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                                 self.log.debug("C3")
                                 route_user = route_as_list[3]
                                 route_servername = route_as_list[4]
+                                spawn_skip = True
                         elif route_as_list[1] == 'user' or route_as_list[1] == 'spawn':
                             self.log.debug("C4")
                             route_user = route_as_list[2]
                             route_servername = route_as_list[3]
+                            spawn_skip = True
                     else:
                         if route_as_list[0] == 'hub':
                             if route_as_list[1] == 'api':
@@ -206,10 +209,12 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                                 self.log.debug("CA3")
                                 route_user = route_as_list[2]
                                 route_servername = route_as_list[3]
+                                spawn_skip = True
                         elif route_as_list[0] == 'user' or route_as_list[0] == 'spawn':
                             self.log.debug("CA4")
                             route_user = route_as_list[1]
                             route_servername = route_as_list[2]
+                            spawn_skip = True
                 except:
                     self.log.debug("Err: {}".format(traceback.format_exc()))
                     route_user = None
@@ -227,7 +232,7 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                         if db_spawner:
                             self.log.debug("DB_Spawner: True")
                             self.db.refresh(db_spawner)
-                        if not db_spawner or not db_spawner.server_id:
+                        if (not spawn_skip) and (not db_spawner or not db_spawner.server_id):
                             self.log.debug("DB_Spawner: False")
                             delete = True
                     else:
