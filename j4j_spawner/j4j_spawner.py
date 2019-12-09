@@ -200,7 +200,7 @@ class J4J_Spawner(Spawner):
             self.log.exception("{} -{} Could not delete route from proxy".format(self._log_name.lower(), uuidcode))
 
     async def start(self):
-        if 'system_input' not in self.user_options:
+        if 'system' not in self.user_options:
             # This errors occures, if you are able to trigger this function, without having your uids loaded first (Example: Open Home, load users, restart Hub, press Spawn)
             raise Exception("Not allowed")
 
@@ -439,3 +439,52 @@ class J4J_Spawner(Spawner):
             self.log.exception("Could not build html page")
             #self.log.exception("{} - Could not build html page".format(self._log_name.lower()))
         return self.html_code
+
+
+    def options_from_form(self, form_data):
+        ret = {}
+        with open(self.project_checkbox_path, 'r') as f:
+            project_cb_dict = json.load(f)
+        with open(self.user.authenticator.partitions_path, 'r') as f:
+            filled_resources = json.load(f)
+        self.log.debug("{} - form_data: {}".format(self.user.name, form_data))
+        ret['system'] = form_data.get('system_input')[0]
+        ret['account'] = form_data.get('account_input')[0]
+        ret['sendmail'] = 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name='sendmail') in form_data.keys()
+        if ret['system'].upper() == 'DOCKER':
+            self.http_timeout = 30
+            for checkbox_name, checkbox_info in project_cb_dict.get('ALL', {}).items():
+                if checkbox_info.get('docker', 'false').lower() == 'true':
+                    if 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name=checkbox_name) in form_data.keys():
+                        if len(checkbox_info.get('scriptpath')) > 0:
+                            ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
+            return ret
+        ret['project'] = form_data.get('project_input')[0]
+        ret['partition'] = form_data.get('partition_input')[0]
+        ret['reservation'] = form_data.get('reservation_input')[0]
+        if ret['reservation'] == "undefined":
+            ret['reservation'] = None
+        # Checkboxen
+        ret['Checkboxes'] = []
+        for checkbox_name, checkbox_info in project_cb_dict.get(ret['system'], {}).items():
+            if 'system_{system}_{account}_{project}_{checkbox_name}_name'.format(system=ret['system'], account=ret['account'], project=ret['project'], checkbox_name=checkbox_name) in form_data.keys():
+                if len(checkbox_info.get('scriptpath')) > 0:
+                    ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
+        for checkbox_name, checkbox_info in project_cb_dict.get('ALL', {}).items():
+            if 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name=checkbox_name) in form_data.keys():
+                if len(checkbox_info.get('scriptpath')) > 0:
+                    ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
+        if ret['partition'] == 'LoginNode':
+            self.http_timeout = 180
+            return ret
+        # Resources
+        ret['Resources'] = {}
+        for key, value in form_data.items():
+            s = 'system_{system}_{account}_{project}_{partition}_'.format(system=ret['system'], account=ret['account'], project=ret['project'], partition=ret['partition'])
+            if key[:len(s)] == s:
+                ret['Resources'][key[len(s):-len('_name')]] = int(int(value[0])*filled_resources.get(ret['system']).get(ret['partition']).get(key[len(s):-len('_name')]).get('DIVISOR', 1))
+        try:
+            self.http_timeout = int(ret['Resources']['Runtime'])*60
+        except:
+            self.http_timeout = 180
+        return ret
