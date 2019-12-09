@@ -298,8 +298,19 @@ class BaseAuthenticator(GenericOAuthenticator):
                 #self.log.debug("{} - Spawner {} is in memory and active".format(user.name, name))
                 if not spawner[name]['active']:
                     uuidcode = uuid.uuid4().hex
-                    #self.log.debug("{} - Spawner {} should not be active. Delete it: {}".format(user.name, name, uuidcode))
-                    await user.spawners[name].cancel(uuidcode, True)
+                    self.log.debug("{} - Spawner {} should not be active. Delete it: {}".format(user.name, name, uuidcode))
+                    try:
+                        await user.spawners[name].cancel(uuidcode, True)
+                    except:
+                        self.log.warning("{} - Could not cancel server. Try to stop it".format(uuidcode))
+                        try:
+                            await user.stop(name)
+                        except:
+                            self.log.warning("{} - Could not stop server. Try to delete it".format(uuidcode))
+                            try:
+                                del user.spawners[name]
+                            except:
+                                self.log.warning("{} - Could not delete from dict".format(uuidcode))
                 else:
                     self.log.debug("{} - Spawner {} should be active. Check server_url and port".format(user.name, name))
                     db_server = user.db.query(orm.Server).filter(orm.Server.id == spawner[name]['server_id']).first()
