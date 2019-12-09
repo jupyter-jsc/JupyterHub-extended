@@ -200,6 +200,7 @@ class J4J_Spawner(Spawner):
             self.log.exception("{} -{} Could not delete route from proxy".format(self._log_name.lower(), uuidcode))
 
     async def start(self):
+        self.log.info("DEBUG1390142: {}".format(self.user_options))
         if 'system' not in self.user_options:
             # This errors occures, if you are able to trigger this function, without having your uids loaded first (Example: Open Home, load users, restart Hub, press Spawn)
             raise Exception("Not allowed")
@@ -412,8 +413,8 @@ class J4J_Spawner(Spawner):
 
     async def get_options_form(self):
         try:
-            if not self.name:
-                raise Exception("{} - Do not allow to start without a name".format(self._log_name.lower()))
+            #if not self.name:
+            #    raise Exception("{} - Do not allow to start without a name".format(self._log_name.lower()))
             db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
             if db_spawner:
                 self.user.db.refresh(db_spawner)
