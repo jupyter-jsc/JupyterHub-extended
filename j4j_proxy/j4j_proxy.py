@@ -16,6 +16,7 @@ Route Specification:
 """
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
+import traceback
 import asyncio
 import json
 import time
@@ -170,54 +171,70 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                 route_user = None
                 route_servername = None
                 try:
+                    self.log.debug("Route as List: {}".format(route_as_list))
                     if route_as_list[0] == 'integration':
                         if route_as_list[1] == 'hub':
                             if route_as_list[2] == 'api':
                                 if route_as_list[3] == 'cancel' or route_as_list[3] == 'jobstatus' or route_as_list[3] == 'token':
+                                    self.log.debug("C1")
                                     route_user = route_as_list[4]
                                     route_servername = route_as_list[5]
                                 elif route_as_list[3] == 'users':
+                                    self.log.debug("C2")
                                     route_user = route_as_list[4]
                                     route_servername = route_as_list[6]
                             elif route_as_list[2] == 'spawn-pending' or route_as_list[2] == 'spawn':
+                                self.log.debug("C3")
                                 route_user = route_as_list[3]
                                 route_servername = route_as_list[4]
                         elif route_as_list[1] == 'user' or route_as_list[1] == 'spawn':
+                            self.log.debug("C4")
                             route_user = route_as_list[2]
                             route_servername = route_as_list[3]
                     else:
                         if route_as_list[0] == 'hub':
                             if route_as_list[1] == 'api':
                                 if route_as_list[2] == 'cancel' or route_as_list[2] == 'jobstatus' or route_as_list[2] == 'token':
+                                    self.log.debug("CA1")
                                     route_user = route_as_list[3]
                                     route_servername = route_as_list[4]
                                 elif route_as_list[2] == 'users':
+                                    self.log.debug("CA2")
                                     route_user = route_as_list[3]
                                     route_servername = route_as_list[5]
                             elif route_as_list[1] == 'spawn-pending' or route_as_list[1] == 'spawn':
+                                self.log.debug("CA3")
                                 route_user = route_as_list[2]
                                 route_servername = route_as_list[3]
                         elif route_as_list[0] == 'user' or route_as_list[0] == 'spawn':
+                            self.log.debug("CA4")
                             route_user = route_as_list[1]
                             route_servername = route_as_list[2]
                 except:
+                    self.log.debug("Err: {}".format(traceback.format_exc()))
                     route_user = None
                     route_servername = None
                     pass
                 delete = False
                 db_spawner = None
                 if route_user:
+                    self.log.debug("Route_user: True")
                     db_user = self.db.query(orm.User).filter(orm.User.name == route_user).first()
                     if db_user:
+                        self.log.debug("DB_user: True")
                         self.db.refresh(db_user)
                         db_spawner = self.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).filter(orm.Spawner.name == route_servername).first()
                         if db_spawner:
+                            self.log.debug("DB_Spawner: True")
                             self.db.refresh(db_spawner)
                         if not db_spawner or not db_spawner.server_id:
+                            self.log.debug("DB_Spawner: False")
                             delete = True
                     else:
+                        self.log.debug("DB_user: False")
                         delete = True
                 else:
+                    self.log.debug("Route_user: False")
                     delete = True
                 if delete:
                     self.log.debug("Deleting stale route %s", routespec)
