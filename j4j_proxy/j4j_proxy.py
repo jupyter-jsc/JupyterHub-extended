@@ -177,20 +177,16 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                         if route_as_list[1] == 'hub':
                             if route_as_list[2] == 'api':
                                 if route_as_list[3] == 'cancel' or route_as_list[3] == 'jobstatus' or route_as_list[3] == 'token':
-                                    self.log.debug("C1")
                                     route_user = route_as_list[4]
                                     route_servername = route_as_list[5]
                                 elif route_as_list[3] == 'users':
-                                    self.log.debug("C2")
                                     route_user = route_as_list[4]
                                     route_servername = route_as_list[6]
                             elif route_as_list[2] == 'spawn-pending' or route_as_list[2] == 'spawn':
-                                self.log.debug("C3")
                                 route_user = route_as_list[3]
                                 route_servername = route_as_list[4]
                                 spawn_skip = True
                         elif route_as_list[1] == 'user' or route_as_list[1] == 'spawn':
-                            self.log.debug("C4")
                             route_user = route_as_list[2]
                             route_servername = route_as_list[3]
                             spawn_skip = True
@@ -198,20 +194,16 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                         if route_as_list[0] == 'hub':
                             if route_as_list[1] == 'api':
                                 if route_as_list[2] == 'cancel' or route_as_list[2] == 'jobstatus' or route_as_list[2] == 'token':
-                                    self.log.debug("CA1")
                                     route_user = route_as_list[3]
                                     route_servername = route_as_list[4]
                                 elif route_as_list[2] == 'users':
-                                    self.log.debug("CA2")
                                     route_user = route_as_list[3]
                                     route_servername = route_as_list[5]
                             elif route_as_list[1] == 'spawn-pending' or route_as_list[1] == 'spawn':
-                                self.log.debug("CA3")
                                 route_user = route_as_list[2]
                                 route_servername = route_as_list[3]
                                 spawn_skip = True
                         elif route_as_list[0] == 'user' or route_as_list[0] == 'spawn':
-                            self.log.debug("CA4")
                             route_user = route_as_list[1]
                             route_servername = route_as_list[2]
                             spawn_skip = True
@@ -223,23 +215,17 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                 delete = False
                 db_spawner = None
                 if route_user:
-                    self.log.debug("Route_user: True")
                     db_user = self.db.query(orm.User).filter(orm.User.name == route_user).first()
                     if db_user:
-                        self.log.debug("DB_user: True")
                         self.db.refresh(db_user)
                         db_spawner = self.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).filter(orm.Spawner.name == route_servername).first()
                         if db_spawner:
-                            self.log.debug("DB_Spawner: True")
                             self.db.refresh(db_spawner)
                         if (not spawn_skip) and (not db_spawner or not db_spawner.server_id):
-                            self.log.debug("DB_Spawner: False")
                             delete = True
                     else:
-                        self.log.debug("DB_user: False")
                         delete = True
                 else:
-                    self.log.debug("Route_user: False")
                     delete = True
                 if delete:
                     self.log.debug("Deleting stale route %s", routespec)
