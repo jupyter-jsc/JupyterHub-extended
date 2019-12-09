@@ -352,9 +352,12 @@ class BaseAuthenticator(GenericOAuthenticator):
 
     spawnable_dic = {}
     def spawnable(self, user_name, server_name):
-        if user_name in self.spawnable_dic.keys() and server_name in self.spawnable_dic[user_name].keys():
-            return self.spawnable_dic[user_name][server_name]
-        else:
+        try:
+            if user_name in self.spawnable_dic.keys() and server_name in self.spawnable_dic[user_name].keys():
+                return self.spawnable_dic[user_name][server_name]
+            else:
+                return True
+        except:
             return True
 
     async def authenticate(self, handler, data=None):
