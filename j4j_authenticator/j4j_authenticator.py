@@ -283,6 +283,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             spawner[db_spawner.name]['state'] = db_spawner.state
             #self.log.debug("{} - Spawner {} spawnable: {}".format(user.name, db_spawner.name, spawner[db_spawner.name]['spawnable']))
         to_pop_list = []
+        to_add_list = []
         for name in user.spawners.keys():
             if name not in name_list:
                 to_pop_list.append(name)
@@ -294,6 +295,14 @@ class BaseAuthenticator(GenericOAuthenticator):
                 user.spawners[name] = user._new_spawner(name)
             # get wrapper if it exists (server may be active)
             user.spawners[name].load_state(spawner[name]['state'])
+            # has the spawner_id changed? If so -> recreate in memory
+            for db_spawner in db_spawner_all:
+                if db_spawner.name == name:
+                    self.log.debug("{} - {} : DB_Spawner_id: {}".format(user.name, name, db_spawner.id))
+                    self.log.debug("{} - {} : Mem_spawner_id: {}".format(user.name, name, user.spawners[name].orm_spawner.id))
+                    if db_spawner.id != user.spawners[name].orm_spawner.id:
+                        to_pop_list.append(name)
+                        to_add_list.append(name)
             if user.spawners[name].active:
                 #self.log.debug("{} - Spawner {} is in memory and active".format(user.name, name))
                 if not spawner[name]['active']:
@@ -324,7 +333,6 @@ class BaseAuthenticator(GenericOAuthenticator):
                         user.spawners[name].orm_spawner.server = None
                         user.spawners[name].server = Server(orm_server=db_server)
             else:
-                #self.log.debug("{} - Spawner {} is in memory and not active".format(user.name, name))
                 if spawner[name]['active']:
                     #self.log.debug("{} - Spawner {} should be active. So create a Server in memory for it".format(user.name, name))
                     for db_spawner in db_spawner_all:
@@ -346,6 +354,13 @@ class BaseAuthenticator(GenericOAuthenticator):
             for name in to_pop_list:
                 self.log.debug("{} - Remove {} from memory".format(user.name, name))
                 user.spawners.pop(name, None)
+        if len(to_add_list) > 0:
+            for name in to_add_list:
+                self.log.debug("{} - Add {} to memory".format(user.name, name))
+                user.spawners[name] = user._new_spawner(name)
+                user.spawners[name].spawnable = spawner[name]['spawnable']
+                user.orm_user.orm_spawners.get(name).spawnable = spawner[name]['spawnable']
+                self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
         for dirty_obj in user.db.dirty:
             self.log.debug("{} - Refresh {}".format(user.name, dirty_obj))
             self.db.refresh(dirty_obj)
