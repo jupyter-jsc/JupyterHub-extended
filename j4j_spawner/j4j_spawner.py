@@ -358,9 +358,9 @@ class J4J_Spawner(Spawner):
         if state.get('login_handler') == 'jscldap':
             header['tokenurl'] = self.user.authenticator.jscldap_token_url
             header['authorizeurl'] = self.user.authenticator.jscldap_authorize_url
-        elif state.get('login_handler') == 'jscworkshop':
-            header['tokenurl'] = self.user.authenticator.jscworkshop_token_url
-            header['authorizeurl'] = self.user.authenticator.jscworkshop_authorize_url
+        elif state.get('login_handler') == 'jscusername':
+            header['tokenurl'] = self.user.authenticator.jscusername_token_url
+            header['authorizeurl'] = self.user.authenticator.jscusername_authorize_url
         try:
             url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
             method = "DELETE"

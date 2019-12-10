@@ -42,25 +42,25 @@ class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
             extra_params={'state': state},
             response_type='code')
 
-class JSCWorkshopCallbackHandler(OAuthCallbackHandler):
+class JSCUsernameCallbackHandler(OAuthCallbackHandler):
     pass
 
-class JSCWorkshopEnvMixin(OAuth2Mixin):
-    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCWORKSHOP_TOKEN_URL', '')
-    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCWORKSHOP_AUTHORIZE_URL', '')
+class JSCUsernameEnvMixin(OAuth2Mixin):
+    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCUSERNAME_TOKEN_URL', '')
+    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCUSERNAME_AUTHORIZE_URL', '')
 
-class JSCWorkshopLoginHandler(OAuthLoginHandler, JSCWorkshopEnvMixin):
+class JSCUsernameLoginHandler(OAuthLoginHandler, JSCUsernameEnvMixin):
     def get(self):
         with open(self.authenticator.unity_file, 'r') as f:
             unity = json.load(f)
-        redirect_uri = self.authenticator.get_callback_url(None, "JSCWorkshop")
+        redirect_uri = self.authenticator.get_callback_url(None, "JSCUsername")
         self.log.info('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
         self.set_state_cookie(state)
         self.authorize_redirect(
             redirect_uri=redirect_uri,
-            client_id=unity[self.authenticator.jscworkshop_token_url]['client_id'],
-            scope=unity[self.authenticator.jscworkshop_authorize_url]['scope'],
+            client_id=unity[self.authenticator.jscusername_token_url]['client_id'],
+            scope=unity[self.authenticator.jscusername_authorize_url]['scope'],
             extra_params={'state': state},
             response_type='code')
 
@@ -102,23 +102,23 @@ class BaseAuthenticator(GenericOAuthenticator):
         help="Authorize URL for JSCLdap Login"
     )
 
-    jscworkshop_callback_url = Unicode(
-        os.getenv('JSCWORKSHOP_CALLBACK_URL', ''),
+    jscusername_callback_url = Unicode(
+        os.getenv('JSCUSERNAME_CALLBACK_URL', ''),
         config=True,
         help="""Callback URL to use.
         Typically `https://{host}/hub/oauth_callback`"""
     )
 
-    jscworkshop_token_url = Unicode(
-        os.environ.get('JSCWORKSHOP_TOKEN_URL', ''),
+    jscusername_token_url = Unicode(
+        os.environ.get('JSCUSERNAME_TOKEN_URL', ''),
         config=True,
-        help="Access token endpoint URL for JSCWorkshop"
+        help="Access token endpoint URL for JSCUsername"
     )
 
-    jscworkshop_authorize_url = Unicode(
-        os.environ.get('JSCWORKSHOP_AUTHORIZE_URL', ''),
+    jscusername_authorize_url = Unicode(
+        os.environ.get('JSCUSERNAME_AUTHORIZE_URL', ''),
         config=True,
-        help="Authorize URL for JSCWorkshop Login"
+        help="Authorize URL for JSCUsername Login"
     )
 
     hpc_infos_key = Unicode(
@@ -217,24 +217,24 @@ class BaseAuthenticator(GenericOAuthenticator):
         """,
     )
 
-    login_handler = [JSCLDAPLoginHandler, JSCWorkshopLoginHandler]
+    login_handler = [JSCLDAPLoginHandler, JSCUsernameLoginHandler]
     logout_handler = J4J_LogoutHandler
-    callback_handler = [JSCLDAPCallbackHandler, JSCWorkshopCallbackHandler]
+    callback_handler = [JSCLDAPCallbackHandler, JSCUsernameCallbackHandler]
 
     def get_handlers(self, app):
         return [
             (r'/jscldap_login', self.login_handler[0]),
             (r'/jscldap_callback', self.callback_handler[0]),
-            (r'/jscworkshop_login', self.login_handler[1]),
-            (r'/jscworkshop_callback', self.callback_handler[1]),
+            (r'/jscusername_login', self.login_handler[1]),
+            (r'/jscusername_callback', self.callback_handler[1]),
             (r'/logout', self.logout_handler)
         ]
 
     def get_callback_url(self, handler=None, authenticator_name=""):
         if authenticator_name == "JSCLDAP":
             return self.jscldap_callback_url
-        elif authenticator_name == "JSCWorkshop":
-            return self.jscworkshop_callback_url
+        elif authenticator_name == "JSCUsername":
+            return self.jscusername_callback_url
         else:
             return "<unknown_callback_url>"
 
@@ -386,9 +386,9 @@ class BaseAuthenticator(GenericOAuthenticator):
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
             self.log.debug("{} - Call JSCLDAP_authenticate".format(uuidcode))
             return await self.jscldap_authenticate(handler, uuidcode, data)
-        elif (handler.__class__.__name__ == "JSCWorkshopCallbackHandler"):
-            self.log.debug("{} - Call JSCWorkshop_authenticate".format(uuidcode))
-            return await self.jscworkshop_authenticate(handler, uuidcode, data)
+        elif (handler.__class__.__name__ == "JSCUsernameCallbackHandler"):
+            self.log.debug("{} - Call JSCUsername_authenticate".format(uuidcode))
+            return await self.jscusername_authenticate(handler, uuidcode, data)
         else:
             self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
             return "Username"
@@ -538,26 +538,26 @@ class BaseAuthenticator(GenericOAuthenticator):
                                }
                 }
 
-    async def jscworkshop_authenticate(self, handler, uuidcode, data=None):
+    async def jscusername_authenticate(self, handler, uuidcode, data=None):
         with open(self.unity_file, 'r') as f:
             unity = json.load(f)
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
         params = dict(
-            redirect_uri=self.get_callback_url(None, "JSCWorkshop"),
+            redirect_uri=self.get_callback_url(None, "JSCUsername"),
             code=code,
             grant_type='authorization_code'
         )
         params.update(self.extra_params)
 
-        if self.jscworkshop_token_url:
-            url = self.jscworkshop_token_url
+        if self.jscusername_token_url:
+            url = self.jscusername_token_url
         else:
-            raise ValueError("{} - Please set the JSCWORKSHOP_TOKEN_URL environment variable".format(uuidcode))
+            raise ValueError("{} - Please set the JSCUSERNAME_TOKEN_URL environment variable".format(uuidcode))
 
         b64key = base64.b64encode(
             bytes(
-                "{}:{}".format(unity[self.jscworkshop_token_url]['client_id'], unity[self.jscworkshop_token_url]['client_secret']),
+                "{}:{}".format(unity[self.jscusername_token_url]['client_id'], unity[self.jscusername_token_url]['client_secret']),
                 "utf8"
             )
         )
@@ -590,28 +590,28 @@ class BaseAuthenticator(GenericOAuthenticator):
             "User-Agent": self.j4j_user_agent,
             "Authorization": "{} {}".format(token_type, accesstoken)
         }
-        url = url_concat(unity[self.jscworkshop_token_url]['links']['userinfo'], unity[self.jscworkshop_token_url].get('userdata_params', {}))
+        url = url_concat(unity[self.jscusername_token_url]['links']['userinfo'], unity[self.jscusername_token_url].get('userdata_params', {}))
 
         req = HTTPRequest(url,
-                          method=unity[self.jscworkshop_token_url].get('userdata_method', 'GET'),
+                          method=unity[self.jscusername_token_url].get('userdata_method', 'GET'),
                           headers=headers,
                           validate_cert=self.tls_verify)
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
 
-        username_key = unity[self.jscworkshop_authorize_url]['username_key']
+        username_key = unity[self.jscusername_authorize_url]['username_key']
         if not resp_json.get(username_key):
             self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
             return
 
-        req_exp = HTTPRequest(unity[self.jscworkshop_token_url]['links']['tokeninfo'],
-                              method=unity[self.jscworkshop_token_url].get('tokeninfo_method', 'GET'),
+        req_exp = HTTPRequest(unity[self.jscusername_token_url]['links']['tokeninfo'],
+                              method=unity[self.jscusername_token_url].get('tokeninfo_method', 'GET'),
                               headers=headers,
                               validate_cert=self.tls_verify)
         resp_exp = await http_client.fetch(req_exp)
         resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
 
-        tokeninfo_exp_key = unity[self.jscworkshop_token_url].get('tokeninfo_exp_key', 'exp')
+        tokeninfo_exp_key = unity[self.jscusername_token_url].get('tokeninfo_exp_key', 'exp')
         if not resp_json_exp.get(tokeninfo_exp_key):
             self.log.error("{} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
             return
@@ -633,8 +633,8 @@ class BaseAuthenticator(GenericOAuthenticator):
                       'stopall': 'false',
                       'username': username,
                       'expire': expire,
-                      'tokenurl': self.jscworkshop_token_url,
-                      'authorizeurl': self.jscworkshop_token_url,
+                      'tokenurl': self.jscusername_token_url,
+                      'authorizeurl': self.jscusername_token_url,
                       'allbutthese': 'true' }
             url = j4j_paths.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
             with closing(requests.post(url,
@@ -677,7 +677,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'oauth_user': resp_json,
                                'user_dic': user_accs,
                                'scope': scope,
-                               'login_handler': 'jscworkshop',
+                               'login_handler': 'jscusername',
                                'errormsg': ''
                                }
                 }

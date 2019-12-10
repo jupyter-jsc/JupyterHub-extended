@@ -54,13 +54,13 @@ class J4J_APITokenHandler(APIHandler):
                                     'scope': ' '.join(unity[user.authenticator.jscldap_token_url]['scope'])}
                             url = user.authenticator.jscldap_token_url
                             info_url = unity[user.authenticator.jscldap_token_url]['links']['tokeninfo']
-                        elif state.get('login_handler') == 'jscworkshop':
-                            b64key = base64.b64encode(bytes('{}:{}'.format(unity[user.authenticator.jscworkshop_token_url]['client_id'], unity[user.authenticator.jscworkshop_token_url]['client_secret']), 'utf-8')).decode('utf-8')
+                        elif state.get('login_handler') == 'jscusername':
+                            b64key = base64.b64encode(bytes('{}:{}'.format(unity[user.authenticator.jscusername_token_url]['client_id'], unity[user.authenticator.jscusername_token_url]['client_secret']), 'utf-8')).decode('utf-8')
                             data = {'refresh_token': token.get('refreshtoken'),
                                     'grant_type': 'refresh_token',
-                                    'scope': ' '.join(unity[user.authenticator.jscworkshop_token_url]['scope'])}
-                            url = user.authenticator.jscworkshop_token_url
-                            info_url = unity[user.authenticator.jscworkshop_token_url]['links']['tokeninfo']
+                                    'scope': ' '.join(unity[user.authenticator.jscusername_token_url]['scope'])}
+                            url = user.authenticator.jscusername_token_url
+                            info_url = unity[user.authenticator.jscusername_token_url]['links']['tokeninfo']
                         accesstoken = token.get('accesstoken')
                         expire = token.get('expire')
                         headers = {'Authorization': 'Basic {}'.format(b64key),

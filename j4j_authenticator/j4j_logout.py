@@ -34,9 +34,9 @@ class J4J_LogoutHandler(LogoutHandler):
                 if state['login_handler'] == 'jscldap':
                     header['tokenurl'] = os.environ.get('JSCLDAP_TOKEN_URL', '')
                     header['authorizeurl'] = os.environ.get('JSCLDAP_AUTHORIZE_URL', '')
-                elif state['login_handler'] == 'jscworkshop':
-                    header['tokenurl'] = os.environ.get('JSCWORKSHOP_TOKEN_URL', '')
-                    header['authorizeurl'] = os.environ.get('JSCWORKSHOP_AUTHORIZE_URL', '')
+                elif state['login_handler'] == 'jscusername':
+                    header['tokenurl'] = os.environ.get('JSCUSERNAME_TOKEN_URL', '')
+                    header['authorizeurl'] = os.environ.get('JSCUSERNAME_AUTHORIZE_URL', '')
                 self.log.debug("{} - User Spawners: {}".format(uuidcode, user.spawners))
                 names = []
                 db_spawner_list = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == user.orm_user.id).all()
