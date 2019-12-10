@@ -10,7 +10,7 @@ colon = '--colon--' # replace : with --colon-- in variable names
 slash = '--slash--' # "
 dot = '--dot--'     # "
 
-def create_html(user_accs, reservations, partitions_path, stylepath, dockerimagespath, project_checkbox_path, maintenance, no_hpc_info=False):
+def create_html(user_accs, reservations, partitions_path, stylepath, dockerimagespath, project_checkbox_path, maintenance):
     with open(partitions_path) as f:
         resources_json = json.load(f)
     with open(project_checkbox_path) as f:
@@ -18,11 +18,14 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
     html = '\n'
     if len(maintenance) > 0:
         html += '<h3 class="maintenance_j4j">The following systems are not available right now: {}</h3>\n'.format(', '.join(maintenance))
-    if no_hpc_info:
-        html += '<h3 class="no_hpc_info_j4j">It seems that you have no HPC accounts. If this is not correct, please contact <a href="mailto:ds-support@fz-juelich.de?subject=Jupyter@JSC Support&amp;body=Please describe your problem here. (english or german)">Jupyter@JSC support</a>.</h3>\n'
     script = '\n'
     # default values
     user_accs_w_docker = []
+    disclaimer = {}
+    for system, accounts in user_accs.items():
+        if "!!DISCLAIMER!!" in accounts.keys():
+            disclaimer[system] = True
+            del accounts["!!DISCLAIMER!!"]            
     for key in sorted(user_accs.keys()):
         user_accs_w_docker.append(key)
     if len(dockerimagespath) > 0:
@@ -53,7 +56,7 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
     html += '  </div>\n'
     script += t2
     for system, accounts in user_accs.items():
-        t1, t2 = html_system('system_'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, system==sorted(user_accs.keys(), key=lambda s: s.casefold())[0])
+        t1, t2 = html_system('system_'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, disclaimer.get(system, False), system==sorted(user_accs.keys(), key=lambda s: s.casefold())[0])
         html += t1
         script += t2
     t1, t2 = docker('system_Docker', dockerimages, docker_show, project_checkbox)
@@ -142,15 +145,15 @@ def function_hide_all(user_accs, reservations):
     return script
 
 
-def html_system(system, accounts, resources_filled, reservations, project_checkbox, show=False):
+def html_system(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show=False):
     html  = ''
     script = ''
-    t1, t2 = dropdowns(system, accounts, resources_filled, reservations, project_checkbox, show)
+    t1, t2 = dropdowns(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show)
     html += t1
     script += t2
     return (html, script)
 
-def dropdowns(system, accounts, resources_filled, reservations, project_checkbox, show=False):
+def dropdowns(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show=False):
     html  = ''
     script = ''
     system_name_list = system.split('_')
@@ -239,7 +242,10 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
     #t1, t2 = checkbox(system+'_loadmodules',"Load modules from ~/."+system.split('_')[1]+"_jupyter_modules.sh","With this option you can load additional modules.<br>Do not use \"module --force purge\" or similar commands!<br>Example for ~/."+system+"_jupyter_modules.sh:<br>\&emsp;module load mod1;<br>\&emsp;module load mod2;")
     #html += t1
     #script += t2
-    html += '  <font size="+1">Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a></font>\n'
+    html += '  <p><font size="+1">Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a>\n'
+    if disclaimer:
+        html += '  <br>Please ensure that the project is able to use the partition.'
+    html += '  </font></p>'
     html += '</div>\n'
     return html, script
 

@@ -9,11 +9,10 @@ import uuid
 import json
 import socket
 
-from traitlets import Unicode, Dict, List
+from traitlets import Unicode, Dict
 from asyncio import sleep
 from datetime import datetime
 from contextlib import closing
-from subprocess import STDOUT, check_output, CalledProcessError
 
 from async_generator import async_generator, yield_
 
@@ -22,34 +21,29 @@ from jupyterhub import orm
 from jupyterhub.utils import url_path_join
 
 
-from .utils import get_user_dic, reservations, create_spawn_data, create_spawn_header
+from .utils import reservations, create_spawn_data, create_spawn_header
 from .html import create_html
 from .communication import j4j_orchestrator_request
 from .file_loads import get_token
+from j4j_spawner.utils import get_maintenance
 
 class J4J_Spawner(Spawner):
     # Variables for the options_form
     #partitions_path = Unicode(config=True, help='')
     reservation_paths = Dict(config=True, help='')
     style_path = Unicode(config=True, help='')
-    nodes_path = Unicode(config=True, help='')
     dockerimages_path = Unicode(config=True, help='')
     project_checkbox_path = Unicode(config=True, help='')
-    hpc_infos_ssh_key = Unicode(config=True, help='')
-    hpc_infos_ssh_user = Unicode(config=True, help='')
-    hpc_infos_ssh_host = Unicode(config=True, help='')
-    hpc_infos_add_queues = List(config=True, help='', default_value=[])
+    nodes_path = Unicode(config=True, help='')
     html_code = ""
 
     # Variables for the jupyter application
     job_status = None
     progs_messages_all = [
-                      {"progress": 15, "html_message": "Creating a <a href=\"https://www.unicore.eu\">UNICORE</a> Job." },
-                      {"progress": 30, "html_message": "Submitting Job to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
-                      {"progress": 45, "html_message": "Uploading mandatory files to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
-                      {"progress": 60, "html_message": "<a href=\"https://www.unicore.eu\">UNICORE</a> submitted Job to <system> for <account>:<project>." },
-                      {"progress": 75, "html_message": "Waiting until your <system>-Job is started." },
-                      {"progress": 90, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab."}
+                      {"progress": 20, "html_message": "Creating a <a href=\"https://www.unicore.eu\">UNICORE</a> Job." },
+                      {"progress": 40, "html_message": "Submitting Job to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
+                      {"progress": 60, "html_message": "Waiting until your <system>-Job is started." },
+                      {"progress": 80, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab."}
                      ]
     progs_no = 0
     db_progs_no = -1
@@ -57,6 +51,7 @@ class J4J_Spawner(Spawner):
     stopped = False
     uuidcode_tmp = None
     sendmail = False
+    login_handler = ''
 
     def clear_state(self):
         """clear any state (called after shutdown)"""
@@ -69,6 +64,7 @@ class J4J_Spawner(Spawner):
         self.stopped = False
         self.api_token = ''
         self.sendmail = False
+        self.login_handler = ''
 
     def load_state(self, state):
         """load state from the database"""
@@ -79,12 +75,14 @@ class J4J_Spawner(Spawner):
             self.hostname = state.get('hostname', None)
             self.api_token = state.get('api_token', '')
             self.sendmail = state.get('sendmail', False)
+            self.login_handler = state.get('loginhandler', '')
         else:
             self.job_status = None
             self.db_progs_no = -1
             self.hostname = None
             self.api_token = ''
             self.sendmail = False
+            self.login_handler = ''
 
     def get_state(self):
         """get the current state"""
@@ -94,6 +92,7 @@ class J4J_Spawner(Spawner):
         state['hostname'] = self.hostname
         state['api_token'] = self.api_token
         state['sendmail'] = self.sendmail
+        state['loginhandler'] = self.login_handler
         return state
 
     @property
@@ -102,7 +101,7 @@ class J4J_Spawner(Spawner):
 
     @async_generator
     async def progress(self):
-        while self.progs_no < 6:
+        while self.progs_no < 4:
             db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.name == self.name).filter(orm.Spawner.user_id == self.user.orm_user.id).first()
             if not db_spawner:
                 self.log.debug("{} - {} not found.".format(self._log_name.lower(), self.name))
@@ -266,7 +265,8 @@ class J4J_Spawner(Spawner):
                                            self.user_options.get('project'),
                                            self._log_name.lower(),
                                            self.user.escaped_name,
-                                           self.user.authenticator.orchestrator_token_path)
+                                           self.user.authenticator.orchestrator_token_path,
+                                           state.get('login_handler', ''))
         spawn_data = create_spawn_data(self._log_name.lower(),
                                        env,
                                        self.user_options.get('partition'),
@@ -274,6 +274,7 @@ class J4J_Spawner(Spawner):
                                        self.user_options.get('Resources', {}),
                                        self.user_options.get('system'),
                                        self.user_options.get('Checkboxes', []))
+        self.login_handler = state.get('login_handler', '')
 
         try:
             with open(self.user.authenticator.j4j_urls_paths, 'r') as f:
@@ -318,7 +319,7 @@ class J4J_Spawner(Spawner):
         self.user.db.refresh(db_spawner)
         self.log.debug("{} - Db_spawner_state: {}".format(uuidcode, db_spawner.state))
         self.load_state(db_spawner.state)
-        if self.job_status in ['running', 'createjob', 'submitunicorejob', 'uploadfiles', 'jobstarted', 'waitforhostname']:
+        if self.job_status in ['running', 'createjob', 'submitunicorejob', 'waitforhostname']:
             return None
         return 0
 
@@ -354,6 +355,12 @@ class J4J_Spawner(Spawner):
                   'expire': str(state.get('expire')),
                   'escapedusername': self.user.escaped_name,
                   'servername': self._log_name.lower()}
+        if state.get('login_handler') == 'jscldap':
+            header['tokenurl'] = self.user.authenticator.jscldap_token_url
+            header['authorizeurl'] = self.user.authenticator.jscldap_authorize_url
+        elif state.get('login_handler') == 'jscusername':
+            header['tokenurl'] = self.user.authenticator.jscusername_token_url
+            header['authorizeurl'] = self.user.authenticator.jscusername_authorize_url
         try:
             url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
             method = "DELETE"
@@ -384,8 +391,8 @@ class J4J_Spawner(Spawner):
             self.user.db.commit()
 
     async def cancel(self, uuidcode, stopped):
-        self.log.info("{} - Cancel JupyterLab: {}".format(self._log_name.lower(), uuidcode))
         try:
+            self.log.info("{} - Cancel JupyterLab: {}".format(self._log_name.lower(), uuidcode))
             if str(type(self._spawn_future)) == "<class '_asyncio.Task'>" and self._spawn_future._state in ['PENDING']:
                 self.log.debug("{} - {} Spawner is pending, try to cancel".format(self._log_name.lower(), uuidcode))
                 self.stopped = False
@@ -405,8 +412,8 @@ class J4J_Spawner(Spawner):
 
     async def get_options_form(self):
         try:
-            if not self.name:
-                raise Exception("{} - Do not allow to start without a name".format(self._log_name.lower()))
+            #if not self.name:
+            #    raise Exception("{} - Do not allow to start without a name".format(self._log_name.lower()))
             db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
             if db_spawner:
                 self.user.db.refresh(db_spawner)
@@ -421,73 +428,24 @@ class J4J_Spawner(Spawner):
                 self.user.db.refresh(db_user)
                 self.user.encrypted_auth_state = db_user.encrypted_auth_state
             state = await self.user.get_auth_state()
-            hpc_infos = state.get('oauth_user').get(self.user.authenticator.hpc_infos_key, '')
-            self.log.info("{} - HPC_Infos: {}".format(self._log_name.lower(), hpc_infos))
-            if len(hpc_infos) == 0:
-                try:
-                    self.log.info("{} - Try to get HPC_Infos via ssh".format(self._log_name.lower()))
-                    hpc_infos = self.get_hpc_infos_via_ssh()
-                    self.log.info("{} - HPC_Infos afterwards: {}".format(self._log_name.lower(), hpc_infos))
-                except:
-                    self.log.exception("{} - Could not get HPC information via ssh for user {}".format(self._log_name.lower(), self.user.name))
-            #if len(hpc_infos) == 0:
-            #    raise Exception("We have no information about your HPC accounts. Please logout and login again.")
+            user_dic = state.get('user_dic', {})
             tunnel_token = get_token(self.user.authenticator.tunnel_token_path)
-            user_accs, maintenance = get_user_dic(hpc_infos, self.user.authenticator.partitions_path, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
+            user_dic, maintenance = get_maintenance(user_dic, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
                 self.log.info("{} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
-            reservations_var = reservations(user_accs, self.reservation_paths)
-            self.html_code = create_html(user_accs, reservations_var, self.user.authenticator.partitions_path, self.style_path, self.dockerimages_path, self.project_checkbox_path, maintenance, len(hpc_infos)==0)
+            reservations_var = reservations(user_dic, self.reservation_paths)
+            self.html_code = create_html(user_dic, reservations_var, self.user.authenticator.resources, self.style_path, self.dockerimages_path, self.project_checkbox_path, maintenance)
         except Exception:
             self.log.exception("Could not build html page")
             #self.log.exception("{} - Could not build html page".format(self._log_name.lower()))
         return self.html_code
 
-    def get_hpc_infos_via_ssh(self):
-        username = self.user.name
-        if username[-len("@fz-juelich.de"):] == '@fz-juelich.de':
-            username = username[:-len("@fz-juelich.de")]
-        cmd = ['ssh', '-i', self.hpc_infos_ssh_key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', '{}@{}'.format(self.hpc_infos_ssh_user, self.hpc_infos_ssh_host), username]
-        try:
-            output = check_output(cmd, stderr=STDOUT, timeout=3, universal_newlines=True)
-        except CalledProcessError:
-            self.log.exception("{} - No HPC infos for {}".format(self._log_name.lower(), self.user.name))
-            return []
-        hpc_infos = output.strip().split('\n')
-        self.log.info("{} - Bare HPC_Infos: {}".format(self._log_name.lower(), hpc_infos))
-        additional_lines = []
-        try:
-            if len(self.hpc_infos_add_queues) > 0:
-                queues = {}
-                for queue in self.hpc_infos_add_queues:
-                    system, partition = queue.split('_')
-                    if system not in queues.keys():
-                        queues[system] = []
-                    queues[system].append(partition)
-                system_project = {}
-                for entry in hpc_infos:
-                    name, system, project, mail = entry.split(',')
-                    if '_' in system:
-                        split = system.split('_')
-                        system = split[0]
-                    if system not in system_project:
-                        system_project[system] = []
-                    if project in system_project[system]:
-                        continue
-                    for queue in queues.get(system, []):
-                        additional_lines.append('{},{}_{},{},{}'.format(name, system, queue, project, mail))
-                    system_project[system].append(project)
-                hpc_infos.extend(additional_lines)
-        except:
-            self.log.exception("{} - Could not add additional queues ({}) to hpc_infos of user {}".format(self._log_name.lower(), self.hpc_infos_add_queues, self.user.name))
-        self.log.info("{} - Return: {}".format(self._log_name.lower(), hpc_infos))
-        return hpc_infos
 
     def options_from_form(self, form_data):
         ret = {}
         with open(self.project_checkbox_path, 'r') as f:
             project_cb_dict = json.load(f)
-        with open(self.user.authenticator.partitions_path, 'r') as f:
+        with open(self.user.authenticator.resources, 'r') as f:
             filled_resources = json.load(f)
         self.log.debug("{} - form_data: {}".format(self.user.name, form_data))
         ret['system'] = form_data.get('system_input')[0]

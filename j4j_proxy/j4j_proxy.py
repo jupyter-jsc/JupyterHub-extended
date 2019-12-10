@@ -16,6 +16,7 @@ Route Specification:
 """
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
+import traceback
 import asyncio
 import json
 import time
@@ -169,22 +170,45 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                 route_as_list = list(filter(None, routespec.split('/')))
                 route_user = None
                 route_servername = None
+                spawn_skip = False
                 try:
-                    if route_as_list[0] == 'hub':
-                        if route_as_list[1] == 'api':
-                            if route_as_list[2] == 'cancel' or route_as_list[2] == 'jobstatus' or route_as_list[2] == 'token':
+                    self.log.debug("Route as List: {}".format(route_as_list))
+                    if route_as_list[0] == 'integration':
+                        if route_as_list[1] == 'hub':
+                            if route_as_list[2] == 'api':
+                                if route_as_list[3] == 'cancel' or route_as_list[3] == 'jobstatus' or route_as_list[3] == 'token':
+                                    route_user = route_as_list[4]
+                                    route_servername = route_as_list[5]
+                                elif route_as_list[3] == 'users':
+                                    route_user = route_as_list[4]
+                                    route_servername = route_as_list[6]
+                            elif route_as_list[2] == 'spawn-pending' or route_as_list[2] == 'spawn':
                                 route_user = route_as_list[3]
                                 route_servername = route_as_list[4]
-                            elif route_as_list[2] == 'users':
-                                route_user = route_as_list[3]
-                                route_servername = route_as_list[5]
-                        elif route_as_list[1] == 'spawn-pending' or route_as_list[1] == 'spawn':
+                                spawn_skip = True
+                        elif route_as_list[1] == 'user' or route_as_list[1] == 'spawn':
                             route_user = route_as_list[2]
                             route_servername = route_as_list[3]
-                    elif route_as_list[0] == 'user' or route_as_list[0] == 'spawn':
-                        route_user = route_as_list[1]
-                        route_servername = route_as_list[2]
+                            spawn_skip = True
+                    else:
+                        if route_as_list[0] == 'hub':
+                            if route_as_list[1] == 'api':
+                                if route_as_list[2] == 'cancel' or route_as_list[2] == 'jobstatus' or route_as_list[2] == 'token':
+                                    route_user = route_as_list[3]
+                                    route_servername = route_as_list[4]
+                                elif route_as_list[2] == 'users':
+                                    route_user = route_as_list[3]
+                                    route_servername = route_as_list[5]
+                            elif route_as_list[1] == 'spawn-pending' or route_as_list[1] == 'spawn':
+                                route_user = route_as_list[2]
+                                route_servername = route_as_list[3]
+                                spawn_skip = True
+                        elif route_as_list[0] == 'user' or route_as_list[0] == 'spawn':
+                            route_user = route_as_list[1]
+                            route_servername = route_as_list[2]
+                            spawn_skip = True
                 except:
+                    self.log.debug("Err: {}".format(traceback.format_exc()))
                     route_user = None
                     route_servername = None
                     pass
@@ -197,7 +221,7 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                         db_spawner = self.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).filter(orm.Spawner.name == route_servername).first()
                         if db_spawner:
                             self.db.refresh(db_spawner)
-                        if not db_spawner or not db_spawner.server_id:
+                        if (not spawn_skip) and (not db_spawner or not db_spawner.server_id):
                             delete = True
                     else:
                         delete = True

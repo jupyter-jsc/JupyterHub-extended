@@ -7,7 +7,6 @@ import json
 import uuid
 import base64
 import time
-import os
 import requests
 
 from contextlib import closing
@@ -46,16 +45,26 @@ class J4J_APITokenHandler(APIHandler):
                 if int(token.get('expire')) - time.time() < 480:
                     try:
                         self.log.debug("{} - {} - Try to update accesstoken".format(uuidcode, user.name))
-                        b64key = base64.b64encode(bytes('{}:{}'.format(user.authenticator.client_id, user.authenticator.client_secret), 'utf-8')).decode('utf-8')
+                        with open(user.authenticator.unity_file, 'r') as f:
+                            unity = json.load(f)
+                        if state.get('login_handler') == 'jscldap':
+                            b64key = base64.b64encode(bytes('{}:{}'.format(unity[user.authenticator.jscldap_token_url]['client_id'], unity[user.authenticator.jscldap_token_url]['client_secret']), 'utf-8')).decode('utf-8')
+                            data = {'refresh_token': token.get('refreshtoken'),
+                                    'grant_type': 'refresh_token',
+                                    'scope': ' '.join(unity[user.authenticator.jscldap_token_url]['scope'])}
+                            url = user.authenticator.jscldap_token_url
+                            info_url = unity[user.authenticator.jscldap_token_url]['links']['tokeninfo']
+                        elif state.get('login_handler') == 'jscusername':
+                            b64key = base64.b64encode(bytes('{}:{}'.format(unity[user.authenticator.jscusername_token_url]['client_id'], unity[user.authenticator.jscusername_token_url]['client_secret']), 'utf-8')).decode('utf-8')
+                            data = {'refresh_token': token.get('refreshtoken'),
+                                    'grant_type': 'refresh_token',
+                                    'scope': ' '.join(unity[user.authenticator.jscusername_token_url]['scope'])}
+                            url = user.authenticator.jscusername_token_url
+                            info_url = unity[user.authenticator.jscusername_token_url]['links']['tokeninfo']
                         accesstoken = token.get('accesstoken')
                         expire = token.get('expire')
-                        data = {'refresh_token': token.get('refreshtoken'),
-                                'grant_type': 'refresh_token',
-                                'scope': ' '.join(user.authenticator.scope)}
                         headers = {'Authorization': 'Basic {}'.format(b64key),
                                    'Accept': 'application/json'}
-                        url = user.authenticator.token_url
-                        info_url = os.environ.get('OAUTH2_TOKENINFO_URL', '<no tokeninfo url in environment>')
                         with closing(requests.post(url, headers=headers, data=data, verify=False)) as r:
                             if r.status_code == 200:
                                 accesstoken = r.json().get('access_token')

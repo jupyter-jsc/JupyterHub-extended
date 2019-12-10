@@ -1,97 +1,242 @@
-import base64
-import json
 import os
-import urllib
 import uuid
+import base64
+import urllib
+import json
 import requests
+import re
+
 from contextlib import closing
-
-from oauthenticator.generic import GenericOAuthenticator
-from tornado import gen
-from tornado.httpclient import HTTPRequest, AsyncHTTPClient
-from tornado.httputil import url_concat
-from traitlets import Unicode, Bool
-
+from subprocess import STDOUT, check_output, CalledProcessError
+from traitlets import Unicode, Bool, List
 from jupyterhub import orm
 from jupyterhub.objects import Server
+from tornado.auth import OAuth2Mixin
+from tornado.httpclient import HTTPRequest, AsyncHTTPClient
+from tornado.httputil import url_concat
+from oauthenticator.oauth2 import OAuthLoginHandler, OAuthCallbackHandler
+from oauthenticator.generic import GenericOAuthenticator
+
 from .j4j_logout import J4J_LogoutHandler
+from .utils import get_user_dic, fit_partition
+
+class JSCLDAPCallbackHandler(OAuthCallbackHandler):
+    pass
+
+class JSCLDAPEnvMixin(OAuth2Mixin):
+    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCLDAP_TOKEN_URL', '')
+    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCLDAP_AUTHORIZE_URL', '')
+
+class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
+    def get(self):
+        with open(self.authenticator.unity_file, 'r') as f:
+            unity = json.load(f)
+        redirect_uri = self.authenticator.get_callback_url(None, "JSCLDAP")
+        self.log.info('OAuth redirect: %r', redirect_uri)
+        state = self.get_state()
+        self.set_state_cookie(state)
+        self.authorize_redirect(
+            redirect_uri=redirect_uri,
+            client_id=unity[self.authenticator.jscldap_token_url]['client_id'],
+            scope=unity[self.authenticator.jscldap_authorize_url]['scope'],
+            extra_params={'state': state},
+            response_type='code')
+
+class JSCUsernameCallbackHandler(OAuthCallbackHandler):
+    pass
+
+class JSCUsernameEnvMixin(OAuth2Mixin):
+    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCUSERNAME_TOKEN_URL', '')
+    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCUSERNAME_AUTHORIZE_URL', '')
+
+class JSCUsernameLoginHandler(OAuthLoginHandler, JSCUsernameEnvMixin):
+    def get(self):
+        with open(self.authenticator.unity_file, 'r') as f:
+            unity = json.load(f)
+        redirect_uri = self.authenticator.get_callback_url(None, "JSCUsername")
+        self.log.info('OAuth redirect: %r', redirect_uri)
+        state = self.get_state()
+        self.set_state_cookie(state)
+        self.authorize_redirect(
+            redirect_uri=redirect_uri,
+            client_id=unity[self.authenticator.jscusername_token_url]['client_id'],
+            scope=unity[self.authenticator.jscusername_authorize_url]['scope'],
+            extra_params={'state': state},
+            response_type='code')
 
 
-class J4J_Authenticator(GenericOAuthenticator):
-    spawnable_dic = {}
-    def spawnable(self, user_name, server_name):
-        if user_name in self.spawnable_dic.keys() and server_name in self.spawnable_dic[user_name].keys():
-            return self.spawnable_dic[user_name][server_name]
-        else:
-            return True
+class BaseAuthenticator(GenericOAuthenticator):
+    login_service = Unicode(
+        "Jupyter@JSC Authenticator",
+        config=True
+    )
+
+    unity_file = Unicode(
+        os.environ.get('UNITY_FILE', ''),
+        config=True,
+        help="Path to unity file with links and other stuff"
+    )
 
     multiple_instances = Bool(
-        os.environ.get('MULTIPLE_INSTANCES', 'false').lower() == 'true',
+        os.environ.get('MULTIPLE_INSTANCES', 'false').lower() in {'true', '1'},
         config=True,
         help="Is this JupyterHub instance running with other instances behind the same proxy with the same database?"
-        )
+    )
 
-    tokeninfo_url = Unicode(
-        os.environ.get('OAUTH2_TOKENINFO_URL', ''),
+    jscldap_callback_url = Unicode(
+        os.getenv('JSCLDAP_CALLBACK_URL', ''),
         config=True,
-        help="Tokeninfo url to get tokeninfo data login information"
-        )
+        help="""Callback URL to use.
+        Typically `https://{host}/hub/oauth_callback`"""
+    )
 
-    tokeninfo_method = Unicode(
-        os.environ.get('OAUTH2_TOKENINFO_METHOD', 'GET'),
-        config = True,
-        help="Tokeninfo method to get expire date of access token"
-        )
-
-    tokeninfo_exp_key = Unicode(
-        os.environ.get('OAUTH2_TOKENINFO_EXP_KEY', 'exp'),
+    jscldap_token_url = Unicode(
+        os.environ.get('JSCLDAP_TOKEN_URL', ''),
         config=True,
-        help="Tokeninfo exp key from returned json for TOKENINFO_URL"
-        )
+        help="Access token endpoint URL for JSCLdap"
+    )
+
+    jscldap_authorize_url = Unicode(
+        os.environ.get('JSCLDAP_AUTHORIZE_URL', ''),
+        config=True,
+        help="Authorize URL for JSCLdap Login"
+    )
+
+    jscusername_callback_url = Unicode(
+        os.getenv('JSCUSERNAME_CALLBACK_URL', ''),
+        config=True,
+        help="""Callback URL to use.
+        Typically `https://{host}/hub/oauth_callback`"""
+    )
+
+    jscusername_token_url = Unicode(
+        os.environ.get('JSCUSERNAME_TOKEN_URL', ''),
+        config=True,
+        help="Access token endpoint URL for JSCUsername"
+    )
+
+    jscusername_authorize_url = Unicode(
+        os.environ.get('JSCUSERNAME_AUTHORIZE_URL', ''),
+        config=True,
+        help="Authorize URL for JSCUsername Login"
+    )
 
     hpc_infos_key = Unicode(
         os.environ.get('OAUTH2_HPC_INFOS_KEY', ''),
         config=True,
         help="Userdata hpc_infos key from returned json for USERDATA_URL"
-        )
+    )
+
+    hpc_infos_ssh_key = Unicode(
+        config=True,
+        help=''
+    )
+
+    hpc_infos_ssh_user = Unicode(
+        config=True,
+        help=''
+    )
+
+    hpc_infos_ssh_host = Unicode(
+        config=True,
+        help=''
+    )
+
+    hpc_infos_add_queues = List(
+        config=True,
+        help='',
+        default_value=[]
+    )
 
     j4j_urls_paths = Unicode(
         os.environ.get('OAUTH2_J4J_URLS_PATHS', ''),
         config=True,
         help="Path to the urls needed for j4j"
-        )
+    )
 
     j4j_user_agent = Unicode(
         os.environ.get('OAUTH2_J4J_USER_AGENT', 'Jupyter@JSC'),
         config = True,
         help="User-Agent variable for communications"
-        )
+    )
 
-    orchestrator_token_path = Unicode(
-        config = True,
-        help = "Path to the J4J_Orchestrator token file"
-        )
-
-    partitions_path = Unicode(
+    resources = Unicode( # Used outside Authenticator
+        os.environ.get('RESOURCES_PATH', ''),
         config = True,
         help = "Path to the filled_resources file"
-        )
+    )
 
-    tunnel_token_path = Unicode(
+    unicore = Unicode( # used outside Authenticator
+        os.environ.get('UNICORE_PATH', ''),
         config = True,
-        help = "Path to the J4J_Tunnel token file"
-        )
+        help = "Path to the unicore.json file"
+    )
 
-    proxy_secret = Unicode(
+    unicore_user = Unicode( # used outside Authenticator
+        os.environ.get('UNICORE_USER_PATH', ''),
+        config = True,
+        help = "Path to the unicore_user.json file"
+    )
+
+    proxy_secret = Unicode( # Used outside Authenticator
+        os.environ.get('PROXY_SECRET', ''),
         config = True,
         help = "Path to the configurable http proxy secret file"
-        )
+    )
 
+    orchestrator_token_path = Unicode( # Used outside Authenticator
+        os.environ.get('ORCHESTRATOR_TOKEN_PATH', ''),
+        config = True,
+        help = "Path to the J4J_Orchestrator token file"
+    )
+
+    tunnel_token_path = Unicode( # Used outside Authenticator
+        os.environ.get('TUNNEL_TOKEN_PATH', ''),
+        config = True,
+        help = "Path to the J4J_Tunnel token file"
+    )
+
+    enable_auth_state = Bool(
+        os.environ.get('ENABLE_AUTH_STATE', False).lower() in {'true', '1'},
+        config=True,
+        help="""Enable persisting auth_state (if available).
+
+        auth_state will be encrypted and stored in the Hub's database.
+        This can include things like authentication tokens, etc.
+        to be passed to Spawners as environment variables.
+
+        Encrypting auth_state requires the cryptography package.
+
+        Additionally, the JUPYTERHUB_CRYPT_KEY environment variable must
+        contain one (or more, separated by ;) 32B encryption keys.
+        These can be either base64 or hex-encoded.
+
+        If encryption is unavailable, auth_state cannot be persisted.
+
+        New in JupyterHub 0.8
+        """,
+    )
+
+    login_handler = [JSCLDAPLoginHandler, JSCUsernameLoginHandler]
     logout_handler = J4J_LogoutHandler
-    errors = {}
+    callback_handler = [JSCLDAPCallbackHandler, JSCUsernameCallbackHandler]
 
     def get_handlers(self, app):
-        return super().get_handlers(app) + [(r'/logout', self.logout_handler)]
+        return [
+            (r'/jscldap_login', self.login_handler[0]),
+            (r'/jscldap_callback', self.callback_handler[0]),
+            (r'/jscusername_login', self.login_handler[1]),
+            (r'/jscusername_callback', self.callback_handler[1]),
+            (r'/logout', self.logout_handler)
+        ]
+
+    def get_callback_url(self, handler=None, authenticator_name=""):
+        if authenticator_name == "JSCLDAP":
+            return self.jscldap_callback_url
+        elif authenticator_name == "JSCUsername":
+            return self.jscusername_callback_url
+        else:
+            return "<unknown_callback_url>"
 
     def remove_secret(self, json_dict):
         if type(json_dict) != dict:
@@ -108,7 +253,9 @@ class J4J_Authenticator(GenericOAuthenticator):
 
     async def update_mem(self, user, caller):
         self.log.debug("{} - Update memory of spawner. Called by: {}".format(user.name, caller))
-        with open(self.partitions_path, 'r') as f:
+        with open(self.j4j_urls_paths, 'r') as f:
+            j4j_paths = json.load(f)
+        with open(j4j_paths.get('hub', {}).get('path_partitions', '<no_path_found>'), 'r') as f:
             resources_filled = json.load(f)
         db_user = user.db.query(orm.User).filter(orm.User.name == user.name).first()
         user.db.refresh(db_user)
@@ -136,6 +283,7 @@ class J4J_Authenticator(GenericOAuthenticator):
             spawner[db_spawner.name]['state'] = db_spawner.state
             #self.log.debug("{} - Spawner {} spawnable: {}".format(user.name, db_spawner.name, spawner[db_spawner.name]['spawnable']))
         to_pop_list = []
+        to_add_list = []
         for name in user.spawners.keys():
             if name not in name_list:
                 to_pop_list.append(name)
@@ -145,28 +293,52 @@ class J4J_Authenticator(GenericOAuthenticator):
             if name not in user.spawners.keys():
                 #self.log.debug("{} - Create wrapper for {}".format(user.name, name))
                 user.spawners[name] = user._new_spawner(name)
-            # yield wrapper if it exists (server may be active)
+            # get wrapper if it exists (server may be active)
             user.spawners[name].load_state(spawner[name]['state'])
+            # has the spawner_id changed? If so -> recreate in memory
+            for db_spawner in db_spawner_all:
+                if db_spawner.name == name:
+                    try:
+                        unused_tmp = user.spawners[name].orm_spawner.id # If this throws an exception we have to replace the spawner in memory
+                        #self.log.debug("{} - {} : Mem_spawner_id: {}".format(user.name, name, user.spawners[name].orm_spawner.id))
+                    except:
+                        #self.log.debug("{} - {}: It's not there anymore".format(user.name, name))
+                        user.spawners.pop(name, None)
+                        #self.log.debug("{} - {}: Add new one in memory".format(user.name, name))
+                        user.spawners[name] = user._new_spawner(name)
+                        user.spawners[name].spawnable = spawner[name]['spawnable']
+                        user.orm_user.orm_spawners.get(name).spawnable = spawner[name]['spawnable']
+                        self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
             if user.spawners[name].active:
                 #self.log.debug("{} - Spawner {} is in memory and active".format(user.name, name))
                 if not spawner[name]['active']:
                     uuidcode = uuid.uuid4().hex
-                    #self.log.debug("{} - Spawner {} should not be active. Delete it: {}".format(user.name, name, uuidcode))
-                    await user.spawners[name].cancel(uuidcode, True)
+                    self.log.debug("{} - Spawner {} should not be active. Delete it: {}".format(user.name, name, uuidcode))
+                    try:
+                        await user.spawners[name].cancel(uuidcode, True)
+                    except:
+                        self.log.warning("{} - Could not cancel server. Try to stop it".format(uuidcode))
+                        try:
+                            await user.stop(name)
+                        except:
+                            self.log.warning("{} - Could not stop server. Try to delete it".format(uuidcode))
+                            try:
+                                del user.spawners[name]
+                            except:
+                                self.log.warning("{} - Could not delete from dict".format(uuidcode))
                 else:
-                    self.log.debug("{} - Spawner {} should be active. Check server_url and port".format(user.name, name))
+                    #self.log.debug("{} - Spawner {} should be active. Check server_url and port".format(user.name, name))
                     db_server = user.db.query(orm.Server).filter(orm.Server.id == spawner[name]['server_id']).first()
                     user.db.refresh(db_server)
                     if db_server.base_url != user.spawners[name].server.base_url or db_server.port != user.spawners[name].server.port:
-                        self.log.debug("Bind_URLs from server {} are different between Database {} and memory {}. Trust the database and delete the own server".format(name, db_server, user.spawners[name].server))
+                        #self.log.debug("Bind_URLs from server {} are different between Database {} and memory {}. Trust the database and delete the own server".format(name, db_server, user.spawners[name].server))
                         old_server = user.db.query(orm.Server).filter(orm.Server.id == user.spawners[name].orm_spawner.server_id).first()
                         if old_server:
-                            self.log.debug("Delete old server {} from database".format(old_server))
+                            #self.log.debug("Delete old server {} from database".format(old_server))
                             user.db.expunge(old_server)
                         user.spawners[name].orm_spawner.server = None
                         user.spawners[name].server = Server(orm_server=db_server)
             else:
-                #self.log.debug("{} - Spawner {} is in memory and not active".format(user.name, name))
                 if spawner[name]['active']:
                     #self.log.debug("{} - Spawner {} should be active. So create a Server in memory for it".format(user.name, name))
                     for db_spawner in db_spawner_all:
@@ -178,7 +350,7 @@ class J4J_Authenticator(GenericOAuthenticator):
                     user.spawners[name].server = Server(orm_server=db_server)
                     #self.log.debug("{} - Spawner {} active is now: {}".format(user.name, name, user.spawners[name].active))
                 #else:
-                    #self.log.debug("{} - Spawner {} should not be active. Everything's fine".format(user.name, name))
+                #    self.log.debug("{} - Spawner {} should not be active. Everything's fine".format(user.name, name))
                 if self.spawnable_dic.get(user.name) == None:
                     self.spawnable_dic[user.name] = {}
                 user.spawners[name].spawnable = spawner[name]['spawnable']
@@ -186,55 +358,83 @@ class J4J_Authenticator(GenericOAuthenticator):
                 self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
         if len(to_pop_list) > 0:
             for name in to_pop_list:
-                self.log.debug("{} - Remove {} from memory".format(user.name, name))
+                #self.log.debug("{} - Remove {} from memory".format(user.name, name))
                 user.spawners.pop(name, None)
+        #if len(to_add_list) > 0:
+        #    for name in to_add_list:
+        #        self.log.debug("{} - Add {} to memory".format(user.name, name))
+        #        user.spawners[name] = user._new_spawner(name)
+        #        user.spawners[name].spawnable = spawner[name]['spawnable']
+        #        user.orm_user.orm_spawners.get(name).spawnable = spawner[name]['spawnable']
+        #        self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
         for dirty_obj in user.db.dirty:
             self.log.debug("{} - Refresh {}".format(user.name, dirty_obj))
             self.db.refresh(dirty_obj)
 
-    @gen.coroutine
-    def authenticate(self, handler, data=None):  # @UnusedVariable
+    spawnable_dic = {}
+    def spawnable(self, user_name, server_name):
+        try:
+            if user_name in self.spawnable_dic.keys() and server_name in self.spawnable_dic[user_name].keys():
+                return self.spawnable_dic[user_name][server_name]
+            else:
+                return True
+        except:
+            return True
+
+    async def authenticate(self, handler, data=None):
+        uuidcode = uuid.uuid4().hex
+        if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
+            self.log.debug("{} - Call JSCLDAP_authenticate".format(uuidcode))
+            return await self.jscldap_authenticate(handler, uuidcode, data)
+        elif (handler.__class__.__name__ == "JSCUsernameCallbackHandler"):
+            self.log.debug("{} - Call JSCUsername_authenticate".format(uuidcode))
+            return await self.jscusername_authenticate(handler, uuidcode, data)
+        else:
+            self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
+            return "Username"
+
+    async def jscldap_authenticate(self, handler, uuidcode, data=None):
+        with open(self.unity_file, 'r') as f:
+            unity = json.load(f)
         code = handler.get_argument("code")
         http_client = AsyncHTTPClient()
-
         params = dict(
-            redirect_uri=self.get_callback_url(handler),
+            redirect_uri=self.get_callback_url(None, "JSCLDAP"),
             code=code,
             grant_type='authorization_code'
         )
         params.update(self.extra_params)
 
-        if self.token_url:
-            url = self.token_url
+        if self.jscldap_token_url:
+            url = self.jscldap_token_url
         else:
-            raise ValueError("Please set the OAUTH2_TOKEN_URL environment variable")
+            raise ValueError("{} - Please set the JSCLDAP_TOKEN_URL environment variable".format(uuidcode))
 
         b64key = base64.b64encode(
             bytes(
-                "{}:{}".format(self.client_id, self.client_secret),
+                "{}:{}".format(unity[self.jscldap_token_url]['client_id'], unity[self.jscldap_token_url]['client_secret']),
                 "utf8"
             )
         )
 
         headers = {
             "Accept": "application/json",
-            "User-Agent": "JupyterHub",
+            "User-Agent": self.j4j_user_agent,
             "Authorization": "Basic {}".format(b64key.decode("utf8"))
         }
         req = HTTPRequest(url,
                           method="POST",
                           headers=headers,
                           validate_cert=self.tls_verify,
-                          body=urllib.parse.urlencode(params)  # Body is required for a POST...
+                          body=urllib.parse.urlencode(params)
                           )
 
-        resp = yield http_client.fetch(req)
-
+        resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
 
-        accesstoken = resp_json['access_token']
+        accesstoken = resp_json.get('access_token', None)
         refreshtoken = resp_json.get('refresh_token', None)
-        token_type = resp_json['token_type']
+        token_type = resp_json.get('token_type', None)
         scope = resp_json.get('scope', '')
         if (isinstance(scope, str)):
             scope = scope.split(' ')
@@ -242,80 +442,326 @@ class J4J_Authenticator(GenericOAuthenticator):
         # Determine who the logged in user is
         headers = {
             "Accept": "application/json",
-            "User-Agent": "JupyterHub",
+            "User-Agent": self.j4j_user_agent,
             "Authorization": "{} {}".format(token_type, accesstoken)
         }
-        if self.userdata_url:
-            url = url_concat(self.userdata_url, self.userdata_params)
-        else:
-            raise ValueError("Please set the OAUTH2_USERDATA_URL environment variable")
+        url = url_concat(unity[self.jscldap_token_url]['links']['userinfo'], unity[self.jscldap_token_url].get('userdata_params', {}))
 
         req = HTTPRequest(url,
-                          method=self.userdata_method,
+                          method=unity[self.jscldap_token_url].get('userdata_method', 'GET'),
                           headers=headers,
                           validate_cert=self.tls_verify)
-        resp = yield http_client.fetch(req)
+        resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
 
-        if not resp_json.get(self.username_key):
-            self.log.error("OAuth user contains no key %s: %s", self.username_key, self.remove_secret(resp_json))
+        username_key = unity[self.jscldap_authorize_url]['username_key']
+
+        if not resp_json.get(username_key):
+            self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
             return
 
-        if self.tokeninfo_url:
-            url = self.tokeninfo_url
-        else:
-            raise ValueError("Please set the OAUTH2_TOKENINFO_URL environment variable")
-
-        req_exp = HTTPRequest(url,
-                              method=self.tokeninfo_method,
+        req_exp = HTTPRequest(unity[self.jscldap_token_url]['links']['tokeninfo'],
+                              method=unity[self.jscldap_token_url].get('tokeninfo_method', 'GET'),
                               headers=headers,
                               validate_cert=self.tls_verify)
-        resp_exp = yield http_client.fetch(req_exp)
+        resp_exp = await http_client.fetch(req_exp)
         resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
 
-        if not resp_json_exp.get(self.tokeninfo_exp_key):
-            self.log.error("Tokeninfo contains no key %s: %s", self.tokeninfo_exp_key, self.remove_secret(resp_json_exp))
+        tokeninfo_exp_key = unity[self.jscldap_token_url].get('tokeninfo_exp_key', 'exp')
+        if not resp_json_exp.get(tokeninfo_exp_key):
+            self.log.error("{} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
             return
 
-        expire = str(resp_json_exp.get(self.tokeninfo_exp_key))
-        username = resp_json.get(self.username_key).split('=')[1]
+        expire = str(resp_json_exp.get(tokeninfo_exp_key))
+        username = resp_json.get(username_key).split('=')[1]
         username = self.normalize_username(username)
-        uuidcode = uuid.uuid4().hex
-        self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(self.username_key), username))
+        self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
         self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
         try:
-            with open(self.orchestrator_token_path, 'r') as f:
-                intern_token = f.read().rstrip()
+            with open(self.j4j_urls_paths, 'r') as f:
+                j4j_paths = json.load(f)
+            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
+                orchestrator_token = f.read().rstrip()
             json_dic = { 'accesstoken': accesstoken,
                          'refreshtoken': refreshtoken }
-            header = {'Intern-Authorization': intern_token,
+            header = {'Intern-Authorization': orchestrator_token,
                       'uuidcode': uuidcode,
                       'stopall': 'false',
                       'username': username,
                       'expire': expire,
-                      'allbutthese': 'true'}
-            with open(self.j4j_urls_paths, 'r') as f:
-                urls = json.load(f)
-            url = urls.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
+                      'tokenurl': self.jscldap_token_url,
+                      'authorizeurl': self.jscldap_token_url,
+                      'allbutthese': 'true' }
+            url = j4j_paths.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
             with closing(requests.post(url,
-                                       headers=header,
-                                       json=json_dic,
-                                       verify=False)) as r:
+                                      headers=header,
+                                      json=json_dic,
+                                      verify=False)) as r:
                 if r.status_code != 202:
-                    self.log.warning("Failed J4J_Orchestrator communication: {} {}".format(r.text, r.status_code))
+                    self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
         except:
-            self.log.exception("{} - Could not Revoke old tokens for {}".format(uuidcode, username))
+            self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
 
-        #self.log.debug("{} - UserData: {} | TokenInfo: {}".format(username, resp_json, resp_json_exp))
-        #self.log.debug("{} - Accesstoken: {} | refreshtoken: {} | token_type: {} | scope: {}".format(username, accesstoken, refreshtoken, token_type, scope))
+        # collect hpc infos with the known ways
+        hpc_infos = resp_json.get(self.hpc_infos_key, '')
+        #self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+
+        # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
+        # Since the information from Unity and ssh are identical, it makes no sense to do it if len(hpc_infos) != 0
+        if len(hpc_infos) == 0:
+            try:
+                self.log.info("{} - Try to get HPC_Infos via ssh".format(uuidcode))
+                hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
+                self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
+            except:
+                self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
+
+        # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
+        user_accs = get_user_dic(hpc_infos, self.resources)
+
+        # Check for HPC Systems in self.unicore, if username is in self.unicore_user
+        self.log.info("{} - User Accs before UNICOREX : {}".format(uuidcode, user_accs))
+        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken))
+        self.log.info("{} - User Accs after UNICOREX : {}".format(uuidcode, user_accs))
+        #self.log.info("{} - Save HPC Infos as dic {}".format(uuidcode, user_accs))
         return {
-            'name': username,
-            'auth_state': {
-                'accesstoken': accesstoken,
-                'refreshtoken': refreshtoken,
-                'expire': expire,
-                'oauth_user': resp_json,
-                'scope': scope,
-                'errormsg': '',
-            }
-    }
+                'name': username,
+                'auth_state': {
+                               'accesstoken': accesstoken,
+                               'refreshtoken': refreshtoken,
+                               'expire': expire,
+                               'oauth_user': resp_json,
+                               'user_dic': user_accs,
+                               'scope': scope,
+                               'login_handler': 'jscldap',
+                               'errormsg': ''
+                               }
+                }
+
+    async def jscusername_authenticate(self, handler, uuidcode, data=None):
+        with open(self.unity_file, 'r') as f:
+            unity = json.load(f)
+        code = handler.get_argument("code")
+        http_client = AsyncHTTPClient()
+        params = dict(
+            redirect_uri=self.get_callback_url(None, "JSCUsername"),
+            code=code,
+            grant_type='authorization_code'
+        )
+        params.update(self.extra_params)
+
+        if self.jscusername_token_url:
+            url = self.jscusername_token_url
+        else:
+            raise ValueError("{} - Please set the JSCUSERNAME_TOKEN_URL environment variable".format(uuidcode))
+
+        b64key = base64.b64encode(
+            bytes(
+                "{}:{}".format(unity[self.jscusername_token_url]['client_id'], unity[self.jscusername_token_url]['client_secret']),
+                "utf8"
+            )
+        )
+
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": self.j4j_user_agent,
+            "Authorization": "Basic {}".format(b64key.decode("utf8"))
+        }
+        req = HTTPRequest(url,
+                          method="POST",
+                          headers=headers,
+                          validate_cert=self.tls_verify,
+                          body=urllib.parse.urlencode(params)
+                          )
+
+        resp = await http_client.fetch(req)
+        resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+
+        accesstoken = resp_json.get('access_token', None)
+        refreshtoken = resp_json.get('refresh_token', None)
+        token_type = resp_json.get('token_type', None)
+        scope = resp_json.get('scope', '')
+        if (isinstance(scope, str)):
+            scope = scope.split(' ')
+
+        # Determine who the logged in user is
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": self.j4j_user_agent,
+            "Authorization": "{} {}".format(token_type, accesstoken)
+        }
+        url = url_concat(unity[self.jscusername_token_url]['links']['userinfo'], unity[self.jscusername_token_url].get('userdata_params', {}))
+
+        req = HTTPRequest(url,
+                          method=unity[self.jscusername_token_url].get('userdata_method', 'GET'),
+                          headers=headers,
+                          validate_cert=self.tls_verify)
+        resp = await http_client.fetch(req)
+        resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+
+        username_key = unity[self.jscusername_authorize_url]['username_key']
+        if not resp_json.get(username_key):
+            self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
+            return
+
+        req_exp = HTTPRequest(unity[self.jscusername_token_url]['links']['tokeninfo'],
+                              method=unity[self.jscusername_token_url].get('tokeninfo_method', 'GET'),
+                              headers=headers,
+                              validate_cert=self.tls_verify)
+        resp_exp = await http_client.fetch(req_exp)
+        resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
+
+        tokeninfo_exp_key = unity[self.jscusername_token_url].get('tokeninfo_exp_key', 'exp')
+        if not resp_json_exp.get(tokeninfo_exp_key):
+            self.log.error("{} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
+            return
+
+        expire = str(resp_json_exp.get(tokeninfo_exp_key))
+        username = resp_json.get(username_key).lower()
+        username = self.normalize_username(username)
+        self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
+        self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
+        try:
+            with open(self.j4j_urls_paths, 'r') as f:
+                j4j_paths = json.load(f)
+            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
+                orchestrator_token = f.read().rstrip()
+            json_dic = { 'accesstoken': accesstoken,
+                         'refreshtoken': refreshtoken }
+            header = {'Intern-Authorization': orchestrator_token,
+                      'uuidcode': uuidcode,
+                      'stopall': 'false',
+                      'username': username,
+                      'expire': expire,
+                      'tokenurl': self.jscusername_token_url,
+                      'authorizeurl': self.jscusername_token_url,
+                      'allbutthese': 'true' }
+            url = j4j_paths.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
+            with closing(requests.post(url,
+                                      headers=header,
+                                      json=json_dic,
+                                      verify=False)) as r:
+                if r.status_code != 202:
+                    self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+        except:
+            self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
+
+        # collect hpc infos with the known ways
+        hpc_infos = resp_json.get(self.hpc_infos_key, '')
+        #self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+
+        # If it's empty and the username is an email address (and no train account) we can check for it via ssh
+        if len(hpc_infos) == 0:
+            pattern = re.compile("^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$")
+            if pattern.match(username):
+                try:
+                    self.log.info("{} - Try to get HPC_Infos via ssh".format(uuidcode))
+                    hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
+                    self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
+                except:
+                    self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
+
+        # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
+        user_accs = get_user_dic(hpc_infos, self.resources)
+
+        # Check for HPC Systems in self.unicore, if username is in self.unicore_user
+        self.log.info("{} - User Accs before UNICOREX : {}".format(uuidcode, user_accs))
+        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken))
+        self.log.info("{} - User Accs afer UNICOREX : {}".format(uuidcode, user_accs))
+        return {
+                'name': username,
+                'auth_state': {
+                               'accesstoken': accesstoken,
+                               'refreshtoken': refreshtoken,
+                               'expire': expire,
+                               'oauth_user': resp_json,
+                               'user_dic': user_accs,
+                               'scope': scope,
+                               'login_handler': 'jscusername',
+                               'errormsg': ''
+                               }
+                }
+
+    def get_hpc_infos_via_unicorex(self, uuidcode, username, user_accs, accesstoken):
+        try:
+            with open(self.j4j_urls_paths, 'r') as f:
+                j4j_paths = json.load(f)
+            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
+                orchestrator_token = f.read().rstrip()
+            with open(self.unicore_user, 'r') as f:
+                unicore_user_file = json.load(f)
+            self.log.info("{} - Is user ({}) in userlist: {}".format(uuidcode, username, unicore_user_file))
+            if username in unicore_user_file.get('userlist', []):
+                with open(self.unicore, 'r') as f:
+                    unicore_file = json.load(f)
+                machine_list = unicore_file.get('machines', [])
+                # remove machines that are already served via Unity or ssh
+                self.log.info("{} - Check user_acc keys: {}".format(uuidcode, user_accs.keys()))
+                for m in user_accs.keys():
+                    if m in machine_list:
+                        self.log.info("{} - Remove: {}".format(uuidcode, m))
+                        machine_list.remove(m)
+                if len(machine_list) > 0:
+                    machines = ' '.join(machine_list)
+                    header = {'Accept': "application/json",
+                              'Intern-Authorization': orchestrator_token,
+                              'uuidcode': uuidcode,
+                              "User-Agent": self.j4j_user_agent,
+                              'accesstoken': accesstoken,
+                              'machines': machines}
+                    url = j4j_paths.get('orchestrator', {}).get('url_unicorex', '<no_url_found>')
+                    self.log.info("{} - GET to {} url with {}".format(uuidcode, url, header))
+                    with closing(requests.get(url,
+                                              headers=header,
+                                              verify=False)) as r:
+                        if r.status_code == 200:
+                            self.log.info("{} - Received !{}! as hpc infos".format(r.status_code, r.json()))
+                            ret = fit_partition(r.json(), self.resources)
+                            for machine in ret.keys():
+                                ret[machine]["!!DISCLAIMER!!"] = {}
+                            self.log.info("{} - Update to : {}".format(uuidcode, ret))
+                            return ret
+                        else:
+                            self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+        except:
+            self.log.exception("{} - Could not check for other HPC accounts via UNICORE/X for {}".format(uuidcode, username))
+        return {}
+
+    def get_hpc_infos_via_ssh(self, uuidcode, username):
+        if username[-len("@fz-juelich.de"):] == '@fz-juelich.de':
+            username = username[:-len("@fz-juelich.de")]
+        cmd = ['ssh', '-i', self.hpc_infos_ssh_key, '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null', '-o', 'LogLevel=ERROR', '{}@{}'.format(self.hpc_infos_ssh_user, self.hpc_infos_ssh_host), username]
+        try:
+            output = check_output(cmd, stderr=STDOUT, timeout=3, universal_newlines=True)
+        except CalledProcessError:
+            self.log.exception("{} - No HPC infos for {}".format(uuidcode, username))
+            return []
+        hpc_infos = output.strip().split('\n')
+        self.log.info("{} - Bare HPC_Infos: {}".format(uuidcode, hpc_infos))
+        additional_lines = []
+        try:
+            if len(self.hpc_infos_add_queues) > 0:
+                queues = {}
+                for queue in self.hpc_infos_add_queues:
+                    system, partition = queue.split('_')
+                    if system not in queues.keys():
+                        queues[system] = []
+                    queues[system].append(partition)
+                system_project = {}
+                for entry in hpc_infos:
+                    name, system, project, mail = entry.split(',')
+                    if '_' in system:
+                        split = system.split('_')
+                        system = split[0]
+                    if system not in system_project:
+                        system_project[system] = []
+                    if project in system_project[system]:
+                        continue
+                    for queue in queues.get(system, []):
+                        additional_lines.append('{},{}_{},{},{}'.format(name, system, queue, project, mail))
+                    system_project[system].append(project)
+                hpc_infos.extend(additional_lines)
+        except:
+            self.log.exception("{} - Could not add additional queues ({}) to hpc_infos of user {}".format(uuidcode, self.hpc_infos_add_queues, username))
+        self.log.info("{} - Return: {}".format(uuidcode, hpc_infos))
+        return hpc_infos
