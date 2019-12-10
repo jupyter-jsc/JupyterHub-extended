@@ -268,20 +268,20 @@ class BaseAuthenticator(GenericOAuthenticator):
                 continue
             user.db.refresh(db_spawner)
             spawner[db_spawner.name] = {}
-            #self.log.debug("{} - Check Spawner {}".format(user.name, db_spawner.name))
+            self.log.debug("{} - Check Spawner {}".format(user.name, db_spawner.name))
             if db_spawner.server_id:
-                #self.log.debug("{} - Spawner {} is active (has a server_id)".format(user.name, db_spawner.name))
+                self.log.debug("{} - Spawner {} is active (has a server_id)".format(user.name, db_spawner.name))
                 spawner[db_spawner.name]['active'] = True
                 spawner[db_spawner.name]['server_id'] = db_spawner.server_id
             else:
-                #self.log.debug("{} - Spawner {} is not active (has no server_id)".format(user.name, db_spawner.name))
+                self.log.debug("{} - Spawner {} is not active (has no server_id)".format(user.name, db_spawner.name))
                 spawner[db_spawner.name]['active'] = False
             if db_spawner.user_options and 'system' in db_spawner.user_options.keys():
                 spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() or db_spawner.user_options.get('system').upper() == 'DOCKER'
             else:
                 spawner[db_spawner.name]['spawnable'] = True
             spawner[db_spawner.name]['state'] = db_spawner.state
-            #self.log.debug("{} - Spawner {} spawnable: {}".format(user.name, db_spawner.name, spawner[db_spawner.name]['spawnable']))
+            self.log.debug("{} - Spawner {} spawnable: {}".format(user.name, db_spawner.name, spawner[db_spawner.name]['spawnable']))
         to_pop_list = []
         to_add_list = []
         for name in user.spawners.keys():
@@ -291,7 +291,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             if name == '':
                 continue
             if name not in user.spawners.keys():
-                #self.log.debug("{} - Create wrapper for {}".format(user.name, name))
+                self.log.debug("{} - Create wrapper for {}".format(user.name, name))
                 user.spawners[name] = user._new_spawner(name)
             # get wrapper if it exists (server may be active)
             user.spawners[name].load_state(spawner[name]['state'])
@@ -304,7 +304,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                         to_pop_list.append(name)
                         to_add_list.append(name)
             if user.spawners[name].active:
-                #self.log.debug("{} - Spawner {} is in memory and active".format(user.name, name))
+                self.log.debug("{} - Spawner {} is in memory and active".format(user.name, name))
                 if not spawner[name]['active']:
                     uuidcode = uuid.uuid4().hex
                     self.log.debug("{} - Spawner {} should not be active. Delete it: {}".format(user.name, name, uuidcode))
@@ -334,7 +334,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                         user.spawners[name].server = Server(orm_server=db_server)
             else:
                 if spawner[name]['active']:
-                    #self.log.debug("{} - Spawner {} should be active. So create a Server in memory for it".format(user.name, name))
+                    self.log.debug("{} - Spawner {} should be active. So create a Server in memory for it".format(user.name, name))
                     for db_spawner in db_spawner_all:
                         if db_spawner.name == name:
                             user.spawners[name].orm_spawner = db_spawner
@@ -342,9 +342,9 @@ class BaseAuthenticator(GenericOAuthenticator):
                     user.db.refresh(db_server)
                     user.spawners[name].orm_spawner.server = None
                     user.spawners[name].server = Server(orm_server=db_server)
-                    #self.log.debug("{} - Spawner {} active is now: {}".format(user.name, name, user.spawners[name].active))
-                #else:
-                    #self.log.debug("{} - Spawner {} should not be active. Everything's fine".format(user.name, name))
+                    self.log.debug("{} - Spawner {} active is now: {}".format(user.name, name, user.spawners[name].active))
+                else:
+                    self.log.debug("{} - Spawner {} should not be active. Everything's fine".format(user.name, name))
                 if self.spawnable_dic.get(user.name) == None:
                     self.spawnable_dic[user.name] = {}
                 user.spawners[name].spawnable = spawner[name]['spawnable']
