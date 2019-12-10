@@ -41,22 +41,24 @@ def create_spawn_data(servername, Environment, partition, reservation, Resources
     return spawn_data
 
 # remove not supported and not available systems
-def get_maintenance(user_accs_keys, nodespath, urls_paths, tunnel_token):
+def get_maintenance(user_accs, nodespath, urls_paths, tunnel_token):
     with open(nodespath, 'r') as f:
         systems = json.load(f)
     with open(urls_paths, 'r') as f:
         urls = json.load(f)
     available_url = urls.get('tunnel', {}).get('url_available')
+    ret = {}
     maintenance = []
-    for key in user_accs_keys:
+    for key, value in user_accs.items():
         maintenance.append(key)
         if key.upper() in systems.keys():
             for node in systems[key.upper()]:
                 with closing(requests.get("{}?node={}".format(available_url, node), headers={'Intern-Authorization': tunnel_token}, verify=False)) as r:
                     if r.status_code == 200 and r.text.lower().strip().strip('"') == 'true':
+                        ret[key] = value
                         maintenance.remove(key)
                         break
-    return maintenance
+    return ret, maintenance
 
 # add reservations
 def reservations(data, reservation_paths):
