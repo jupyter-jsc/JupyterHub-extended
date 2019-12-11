@@ -24,8 +24,8 @@ class JSCLDAPCallbackHandler(OAuthCallbackHandler):
     pass
 
 class JSCLDAPEnvMixin(OAuth2Mixin):
-    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCLDAP_TOKEN_URL', '')
-    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCLDAP_AUTHORIZE_URL', '')
+    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCLDAP_TOKEN_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2/token')
+    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCLDAP_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as/oauth2-authz')
 
 class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
     def get(self):
@@ -46,8 +46,8 @@ class JSCUsernameCallbackHandler(OAuthCallbackHandler):
     pass
 
 class JSCUsernameEnvMixin(OAuth2Mixin):
-    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCUSERNAME_TOKEN_URL', '')
-    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCUSERNAME_AUTHORIZE_URL', '')
+    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('JSCUSERNAME_TOKEN_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2/token')
+    _OAUTH_AUTHORIZE_URL = os.environ.get('JSCUSERNAME_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as-username/oauth2-authz')
 
 class JSCUsernameLoginHandler(OAuthLoginHandler, JSCUsernameEnvMixin):
     def get(self):
@@ -84,39 +84,39 @@ class BaseAuthenticator(GenericOAuthenticator):
     )
 
     jscldap_callback_url = Unicode(
-        os.getenv('JSCLDAP_CALLBACK_URL', ''),
+        os.getenv('JSCLDAP_CALLBACK_URL', 'https://jupyter-jsc.fz-juelich.de/hub/jscldap_callback'),
         config=True,
         help="""Callback URL to use.
         Typically `https://{host}/hub/oauth_callback`"""
     )
 
     jscldap_token_url = Unicode(
-        os.environ.get('JSCLDAP_TOKEN_URL', ''),
+        os.environ.get('JSCLDAP_TOKEN_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2/token'),
         config=True,
         help="Access token endpoint URL for JSCLdap"
     )
 
     jscldap_authorize_url = Unicode(
-        os.environ.get('JSCLDAP_AUTHORIZE_URL', ''),
+        os.environ.get('JSCLDAP_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as/oauth2-authz'),
         config=True,
         help="Authorize URL for JSCLdap Login"
     )
 
     jscusername_callback_url = Unicode(
-        os.getenv('JSCUSERNAME_CALLBACK_URL', ''),
+        os.getenv('JSCUSERNAME_CALLBACK_URL', 'https://jupyter-jsc.fz-juelich.de/hub/jscusername_callback'),
         config=True,
         help="""Callback URL to use.
         Typically `https://{host}/hub/oauth_callback`"""
     )
 
     jscusername_token_url = Unicode(
-        os.environ.get('JSCUSERNAME_TOKEN_URL', ''),
+        os.environ.get('JSCUSERNAME_TOKEN_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2/token'),
         config=True,
         help="Access token endpoint URL for JSCUsername"
     )
 
     jscusername_authorize_url = Unicode(
-        os.environ.get('JSCUSERNAME_AUTHORIZE_URL', ''),
+        os.environ.get('JSCUSERNAME_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as-username/oauth2-authz'),
         config=True,
         help="Authorize URL for JSCUsername Login"
     )
