@@ -20,12 +20,12 @@ def create_spawn_header(uuidcode, expire, refreshtoken, jhubtoken, accesstoken, 
         "servername": servername,
         "escapedusername": escapedusername
         }
-    if login_handler == 'jscldap':
-        spawn_header['tokenurl'] = os.environ.get('JSCLDAP_TOKEN_URL', '')
-        spawn_header['authorizeurl'] = os.environ.get('JSCLDAP_AUTHORIZE_URL', '')
-    elif login_handler == 'jscusername':
-        spawn_header['tokenurl'] = os.environ.get('JSCUSERNAME_TOKEN_URL', '')
-        spawn_header['authorizeurl'] = os.environ.get('JSCUSERNAME_AUTHORIZE_URL', '')
+    if login_handler == 'jscusername':
+        spawn_header['tokenurl'] = os.environ.get('JSCUSERNAME_TOKEN_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2/token')
+        spawn_header['authorizeurl'] = os.environ.get('JSCUSERNAME_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as-username/oauth2-authz')
+    else:
+        spawn_header['tokenurl'] = os.environ.get('JSCLDAP_TOKEN_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2/token')
+        spawn_header['authorizeurl'] = os.environ.get('JSCLDAP_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as/oauth2-authz')
     return spawn_header
 
 def create_spawn_data(servername, Environment, partition, reservation, Resources, system, Checkboxes):
