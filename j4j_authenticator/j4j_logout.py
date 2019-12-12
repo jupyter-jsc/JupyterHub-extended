@@ -30,6 +30,7 @@ class J4J_LogoutHandler(LogoutHandler):
                           'uuidcode': uuidcode,
                           'stopall': 'true',
                           'username': user.name,
+                          'escapedusername': user.escaped_name,
                           'expire': state['expire']}
                 if state['login_handler'] == 'jscusername':
                     header['tokenurl'] = os.environ.get('JSCUSERNAME_TOKEN_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2/token')
