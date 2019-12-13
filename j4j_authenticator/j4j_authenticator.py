@@ -504,7 +504,9 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
-        #self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+        self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+        if type(hpc_infos) == str:
+            hpc_infos = [hpc_infos]
 
         # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
         # Since the information from Unity and ssh are identical, it makes no sense to do it if len(hpc_infos) != 0
