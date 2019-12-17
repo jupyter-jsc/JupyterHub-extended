@@ -505,8 +505,6 @@ class BaseAuthenticator(GenericOAuthenticator):
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
         self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
-        if type(hpc_infos) == str:
-            hpc_infos = [hpc_infos]
 
         # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
         # Since the information from Unity and ssh are identical, it makes no sense to do it if len(hpc_infos) != 0
@@ -517,6 +515,8 @@ class BaseAuthenticator(GenericOAuthenticator):
                 self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
             except:
                 self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
+        elif type(hpc_infos) == str:
+            hpc_infos = [hpc_infos]
 
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
         user_accs = get_user_dic(hpc_infos, self.resources)
