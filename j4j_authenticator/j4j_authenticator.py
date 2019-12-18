@@ -515,8 +515,11 @@ class BaseAuthenticator(GenericOAuthenticator):
                 self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
             except:
                 self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
-        elif type(hpc_infos) == str:
-            hpc_infos = [hpc_infos]
+        if type(hpc_infos) == str:
+            if len(hpc_infos) == 0:
+                hpc_infos = []
+            else:
+                hpc_infos = [hpc_infos]
 
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
         user_accs = get_user_dic(hpc_infos, self.resources)
@@ -662,6 +665,11 @@ class BaseAuthenticator(GenericOAuthenticator):
                     self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
                 except:
                     self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
+        if type(hpc_infos) == str:
+            if len(hpc_infos) == 0:
+                hpc_infos = []
+            else:
+                hpc_infos = [hpc_infos]
 
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
         user_accs = get_user_dic(hpc_infos, self.resources)
@@ -686,14 +694,14 @@ class BaseAuthenticator(GenericOAuthenticator):
 
     def get_hpc_infos_via_unicorex(self, uuidcode, username, user_accs, accesstoken):
         try:
-            with open(self.j4j_urls_paths, 'r') as f:
-                j4j_paths = json.load(f)
-            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
-                orchestrator_token = f.read().rstrip()
             with open(self.unicore_user, 'r') as f:
                 unicore_user_file = json.load(f)
             self.log.info("{} - Is user ({}) in userlist: {}".format(uuidcode, username, unicore_user_file))
             if username in unicore_user_file.get('userlist', []):
+                with open(self.j4j_urls_paths, 'r') as f:
+                    j4j_paths = json.load(f)
+                with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
+                    orchestrator_token = f.read().rstrip()
                 with open(self.unicore, 'r') as f:
                     unicore_file = json.load(f)
                 machine_list = unicore_file.get('machines', [])
