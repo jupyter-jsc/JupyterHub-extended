@@ -33,7 +33,7 @@ class J4J_APIProxyHandler(APIHandler):
                 self.log.debug("{} - DB_spawner: {}".format(uuidcode, db_spawner))
                 if db_spawner:
                     user.db.refresh(db_spawner)
-                    self.log.debug("{} - DB_spawner_state: {}".format(uuidcode, db_spawner.state))
+                    #self.log.debug("{} - DB_spawner_state: {}".format(uuidcode, db_spawner.state))
                     user.spawners[server_name].load_state(db_spawner.state)
                     user.spawners[server_name].remove_proxys(uuidcode)
                     state = {}

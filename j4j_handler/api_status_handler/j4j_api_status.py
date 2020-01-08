@@ -136,7 +136,7 @@ class J4J_APIStatusHandler(APIHandler):
                 state['last_status_update'] = time.time()
                 # load state to spawner in memory
                 user.spawners[server_name].load_state(db_spawner.state)
-                self.log.debug("{} - {} Set Database State to: {}".format(user.name, uuidcode, state))
+                #self.log.debug("{} - {} Set Database State to: {}".format(user.name, uuidcode, state))
                 setattr(db_spawner, 'state', state)
                 setattr(db_spawner, 'last_activity', datetime.utcnow())
                 user.db.commit()
