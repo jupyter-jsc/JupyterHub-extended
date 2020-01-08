@@ -317,7 +317,7 @@ class J4J_Spawner(Spawner):
             self.log.warning("{} - {} - Poll for Spawner that does not exist in database".format(self._log_name.lower(), uuidcode))
             return 0
         self.user.db.refresh(db_spawner)
-        self.log.debug("{} - Db_spawner_state: {}".format(uuidcode, db_spawner.state))
+        #self.log.debug("{} - Db_spawner_state: {}".format(uuidcode, db_spawner.state))
         self.load_state(db_spawner.state)
         if self.job_status in ['running', 'createjob', 'submitunicorejob', 'waitforhostname']:
             return None
