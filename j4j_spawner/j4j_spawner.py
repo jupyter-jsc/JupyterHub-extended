@@ -213,6 +213,10 @@ class J4J_Spawner(Spawner):
             self.user.db.refresh(db_user)
             self.user.encrypted_auth_state = db_user.encrypted_auth_state
         state = await self.user.get_auth_state()
+        # TEST
+        self.log.debug("############## DEBUG TEST: {}".format(self.handler))
+        self.log.debug("############## DEBUG TEST: {}".format(self.handler.logout_url))
+        self.handler.redirect(self.handler.logout_url)
         env = self.get_env()
         self.log.debug("{} - Environment: {}".format(uuidcode, env))
         if env['JUPYTERHUB_API_TOKEN'] == "":
