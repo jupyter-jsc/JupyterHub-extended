@@ -213,10 +213,14 @@ class J4J_Spawner(Spawner):
             self.user.db.refresh(db_user)
             self.user.encrypted_auth_state = db_user.encrypted_auth_state
         state = await self.user.get_auth_state()
-        # TEST
-        self.log.debug("############## DEBUG TEST: {}".format(self.user.authenticator.logout_url(self.hub.base_url)))
+        # Testing
+        #if len(state.get('accesstoken', '')) == 0 or len(state.get('refreshtoken', '')) == 0 or len(state.get('expire', '')) == 0:
+        #    self.handler.redirect(self.user.authenticator.logout_url(self.hub.base_url))
+        #    raise Exception("Could not find auth state. Please login again.")
         self.handler.redirect(self.user.authenticator.logout_url(self.hub.base_url))
-        return
+        raise Exception("Could not find auth state. Please login again.")
+	# Testing End
+
         env = self.get_env()
         self.log.debug("{} - Environment: {}".format(uuidcode, env))
         if env['JUPYTERHUB_API_TOKEN'] == "":
