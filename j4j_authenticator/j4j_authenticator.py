@@ -519,9 +519,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         user_accs = get_user_dic(hpc_infos, self.resources)
 
         # Check for HPC Systems in self.unicore
-        self.log.info("{} - User Accs before UNICOREX : {}".format(uuidcode, user_accs))
         waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
-        self.log.info("{} - User Accs after UNICOREX : {}".format(uuidcode, user_accs))
         #self.log.info("{} - Save HPC Infos as dic {}".format(uuidcode, user_accs))
         return {
                 'name': username,
@@ -670,9 +668,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         user_accs = get_user_dic(hpc_infos, self.resources)
 
         # Check for HPC Systems in self.unicore
-        self.log.info("{} - User Accs before UNICOREX : {}".format(uuidcode, user_accs))
         waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
-        self.log.info("{} - User Accs afer UNICOREX : {}".format(uuidcode, user_accs))
         return {
                 'name': username,
                 'auth_state': {
@@ -708,6 +704,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 header = {'Accept': "application/json",
                           'Intern-Authorization': orchestrator_token,
                           'uuidcode': uuidcode,
+                          'username': username,
                           "User-Agent": self.j4j_user_agent,
                           'accesstoken': accesstoken,
                           'machines': machines}
