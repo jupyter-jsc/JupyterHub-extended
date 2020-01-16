@@ -53,8 +53,8 @@ class J4J_APIUserAccsHandler(APIHandler):
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
         self.log.info("{} - Post useraccs for user: {}".format(uuidcode, username))
-        self.log.info("{} - Host: {}".format(uuidcode, self.request.get("Host")))
-        self.log.info("{} - Referer: {}".format(uuidcode, self.request.get("Referer")))
+        self.log.info("{} - Host: {}".format(uuidcode, self.request.headers.get("Host")))
+        self.log.info("{} - Referer: {}".format(uuidcode, self.request.headers.get("Referer")))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:
