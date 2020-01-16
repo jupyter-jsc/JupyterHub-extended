@@ -18,7 +18,7 @@ from oauthenticator.oauth2 import OAuthLoginHandler, OAuthCallbackHandler
 from oauthenticator.generic import GenericOAuthenticator
 
 from .j4j_logout import J4J_LogoutHandler
-from .utils import get_user_dic, fit_partition
+from .utils import get_user_dic 
 
 class JSCLDAPCallbackHandler(OAuthCallbackHandler):
     pass
@@ -166,16 +166,10 @@ class BaseAuthenticator(GenericOAuthenticator):
         help = "Path to the filled_resources file"
     )
 
-    unicore = Unicode( # used outside Authenticator
+    unicore = Unicode( 
         os.environ.get('UNICORE_PATH', ''),
         config = True,
         help = "Path to the unicore.json file"
-    )
-
-    unicore_user = Unicode( # used outside Authenticator
-        os.environ.get('UNICORE_USER_PATH', ''),
-        config = True,
-        help = "Path to the unicore_user.json file"
     )
 
     proxy_secret = Unicode( # Used outside Authenticator
@@ -524,9 +518,9 @@ class BaseAuthenticator(GenericOAuthenticator):
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
         user_accs = get_user_dic(hpc_infos, self.resources)
 
-        # Check for HPC Systems in self.unicore, if username is in self.unicore_user
+        # Check for HPC Systems in self.unicore
         self.log.info("{} - User Accs before UNICOREX : {}".format(uuidcode, user_accs))
-        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken))
+        waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
         self.log.info("{} - User Accs after UNICOREX : {}".format(uuidcode, user_accs))
         #self.log.info("{} - Save HPC Infos as dic {}".format(uuidcode, user_accs))
         return {
@@ -537,6 +531,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'expire': expire,
                                'oauth_user': resp_json,
                                'user_dic': user_accs,
+                               'user_accs_complete': not waitforaccupdate,
                                'scope': scope,
                                'login_handler': 'jscldap',
                                'errormsg': ''
@@ -674,9 +669,9 @@ class BaseAuthenticator(GenericOAuthenticator):
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
         user_accs = get_user_dic(hpc_infos, self.resources)
 
-        # Check for HPC Systems in self.unicore, if username is in self.unicore_user
+        # Check for HPC Systems in self.unicore
         self.log.info("{} - User Accs before UNICOREX : {}".format(uuidcode, user_accs))
-        user_accs.update(self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken))
+        waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
         self.log.info("{} - User Accs afer UNICOREX : {}".format(uuidcode, user_accs))
         return {
                 'name': username,
@@ -686,6 +681,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'expire': expire,
                                'oauth_user': resp_json,
                                'user_dic': user_accs,
+                               'user_accs_complete': not waitforaccupdate,
                                'scope': scope,
                                'login_handler': 'jscusername',
                                'errormsg': ''
@@ -694,48 +690,40 @@ class BaseAuthenticator(GenericOAuthenticator):
 
     def get_hpc_infos_via_unicorex(self, uuidcode, username, user_accs, accesstoken):
         try:
-            with open(self.unicore_user, 'r') as f:
-                unicore_user_file = json.load(f)
-            self.log.info("{} - Is user ({}) in userlist: {}".format(uuidcode, username, unicore_user_file))
-            if username in unicore_user_file.get('userlist', []):
-                with open(self.j4j_urls_paths, 'r') as f:
-                    j4j_paths = json.load(f)
-                with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
-                    orchestrator_token = f.read().rstrip()
-                with open(self.unicore, 'r') as f:
-                    unicore_file = json.load(f)
-                machine_list = unicore_file.get('machines', [])
-                # remove machines that are already served via Unity or ssh
-                self.log.info("{} - Check user_acc keys: {}".format(uuidcode, user_accs.keys()))
-                for m in user_accs.keys():
-                    if m in machine_list:
-                        self.log.info("{} - Remove: {}".format(uuidcode, m))
-                        machine_list.remove(m)
-                if len(machine_list) > 0:
-                    machines = ' '.join(machine_list)
-                    header = {'Accept': "application/json",
-                              'Intern-Authorization': orchestrator_token,
-                              'uuidcode': uuidcode,
-                              "User-Agent": self.j4j_user_agent,
-                              'accesstoken': accesstoken,
-                              'machines': machines}
-                    url = j4j_paths.get('orchestrator', {}).get('url_unicorex', '<no_url_found>')
-                    self.log.info("{} - GET to {} url with {}".format(uuidcode, url, header))
-                    with closing(requests.get(url,
-                                              headers=header,
-                                              verify=False)) as r:
-                        if r.status_code == 200:
-                            self.log.info("{} - Received !{}! as hpc infos".format(r.status_code, r.json()))
-                            ret = fit_partition(r.json(), self.resources)
-                            for machine in ret.keys():
-                                ret[machine]["!!DISCLAIMER!!"] = {}
-                            self.log.info("{} - Update to : {}".format(uuidcode, ret))
-                            return ret
-                        else:
-                            self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+            with open(self.j4j_urls_paths, 'r') as f:
+                j4j_paths = json.load(f)
+            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
+                orchestrator_token = f.read().rstrip()
+            with open(self.unicore, 'r') as f:
+                unicore_file = json.load(f)
+            machine_list = unicore_file.get('machines', [])
+            # remove machines that are already served via Unity or ssh
+            self.log.info("{} - Check user_acc keys: {}".format(uuidcode, user_accs.keys()))
+            for m in user_accs.keys():
+                if m in machine_list:
+                    self.log.info("{} - Remove: {}".format(uuidcode, m))
+                    machine_list.remove(m)
+            if len(machine_list) > 0:
+                machines = ' '.join(machine_list)
+                header = {'Accept': "application/json",
+                          'Intern-Authorization': orchestrator_token,
+                          'uuidcode': uuidcode,
+                          "User-Agent": self.j4j_user_agent,
+                          'accesstoken': accesstoken,
+                          'machines': machines}
+                url = j4j_paths.get('orchestrator', {}).get('url_unicorex', '<no_url_found>')
+                self.log.info("{} - GET to {} url with {}".format(uuidcode, url, header))
+                with closing(requests.get(url,
+                                          headers=header,
+                                          verify=False)) as r:
+                    if r.status_code == 204:
+                        return True
+                    else:
+                        self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+                        return False
         except:
             self.log.exception("{} - Could not check for other HPC accounts via UNICORE/X for {}".format(uuidcode, username))
-        return {}
+        return False
 
     def get_hpc_infos_via_ssh(self, uuidcode, username):
         if username[-len("@fz-juelich.de"):] == '@fz-juelich.de':
