@@ -9,6 +9,7 @@ import json
 import base64
 import time
 import requests
+import os
 
 from jupyterhub.apihandlers.base import APIHandler
 from jupyterhub.orm import APIToken, User
@@ -20,15 +21,14 @@ class J4J_APIUserAccsHandler(APIHandler):
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
         self.log.info("{} - Get UserAccs Status for user: {}".format(uuidcode, username))
-        user = None
-        try:
-            if 'Authorization' in self.request.headers.keys():
-                s = self.request.headers.get('Authorization').split()
-                found = APIToken.find(self.db, token=s[1])
-                if found is not None:
-                    user = self._user_from_orm(found.user)
-        except:
-            self.log.debug("{} - Could not find user for this token: {}".format(uuidcode, self.request.headers))
+        with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
+            intern_token = f.read().rstrip()
+        if self.request.headers.get('Intern-Authorization', '') != intern_token:
+            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.set_status(401)
+            return
+
+        user = self.find_user(username)
         if user:
             self.set_header('Content-Type', 'text/plain')
             self.set_status(200)
@@ -38,7 +38,7 @@ class J4J_APIUserAccsHandler(APIHandler):
                 user.db.refresh(db_user)
                 user.encrypted_auth_state = db_user.encrypted_auth_state
             state = await user.get_auth_state()
-            complete = state.get('user_accs_complete')
+            complete = state.get('useraccs_complete')
             self.write(complete)
             self.flush()
         else:
@@ -53,6 +53,14 @@ class J4J_APIUserAccsHandler(APIHandler):
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
         self.log.info("{} - Post useraccs for user: {}".format(uuidcode, username))
+        self.log.info("{} - Host: {}".format(uuidcode, self.request.get("Host")))
+        self.log.info("{} - Referer: {}".format(uuidcode, self.request.get("Referer")))
+        with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
+            intern_token = f.read().rstrip()
+        if self.request.headers.get('Intern-Authorization', '') != intern_token:
+            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.set_status(401)
+            return
         data = self.request.body.decode("utf8")
         self.set_header('Content-Type', 'text/plain')
         if not data:
@@ -60,15 +68,7 @@ class J4J_APIUserAccsHandler(APIHandler):
             self.write("Please send the token in the body as json: { \"accesstoken\": \"...\", \"expire\": \"...\" }")
             self.flush()
             return
-        user = None
-        try:
-            if 'Authorization' in self.request.headers.keys():
-                s = self.request.headers.get('Authorization').split()
-                found = APIToken.find(self.db, token=s[1])
-                if found is not None:
-                    user = self._user_from_orm(found.user)
-        except:
-            self.log.debug("{} - Could not find user for this token: {}".format(uuidcode, self.request.headers))        
+        user = self.find_user(username)
         if user:
             try:
                 data_json = json.loads(data)
@@ -81,18 +81,17 @@ class J4J_APIUserAccsHandler(APIHandler):
                     user.db.refresh(db_user)
                     user.encrypted_auth_state = db_user.encrypted_auth_state
                 state = await user.get_auth_state()
-                # function bla
                 new_accs = fit_partition(data_json.get('useraccs'), user.authenticator.resources)
                 for machine in new_accs.keys():
                     new_accs[machine]["!!DISCLAIMER!!"] = {}
                 state['user_dic'].update(new_accs)
-                state['user_accs_complete'] = True
+                state['useraccs_complete'] = True
                 await user.save_auth_state(state)
                 self.set_header('Content-Type', 'text/plain')
                 self.set_status(204)
                 return
             except:
-                self.set_status(400)
+                self.set_status(500)
                 self.log.exception("{} - Could not update useraccs for user {}".format(uuidcode, username))
                 return
         else:

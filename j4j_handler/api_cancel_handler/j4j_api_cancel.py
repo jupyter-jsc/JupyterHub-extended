@@ -5,6 +5,7 @@ Created on May 10, 2019
 '''
 
 import uuid
+import os
 
 from jupyterhub.apihandlers.base import APIHandler
 from jupyterhub.orm import APIToken, Spawner, User
@@ -15,6 +16,12 @@ class J4J_APICancelHandler(APIHandler):
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
         self.log.info("{} - Cancel Spawn for server: {}".format(uuidcode, server_name))
+        with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
+            intern_token = f.read().rstrip()
+        if self.request.headers.get('Intern-Authorization', '') != intern_token:
+            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.set_status(401)
+            return
         error = self.request.headers.get('Error', None)
         user = None
         if 'Authorization' in self.request.headers.keys():

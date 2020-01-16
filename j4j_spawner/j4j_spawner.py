@@ -52,6 +52,7 @@ class J4J_Spawner(Spawner):
     uuidcode_tmp = None
     sendmail = False
     login_handler = ''
+    useraccs_complete = False
 
     def clear_state(self):
         """clear any state (called after shutdown)"""
@@ -65,6 +66,7 @@ class J4J_Spawner(Spawner):
         self.api_token = ''
         self.sendmail = False
         self.login_handler = ''
+        self.useraccs_complete = False
 
     def load_state(self, state):
         """load state from the database"""
@@ -76,6 +78,7 @@ class J4J_Spawner(Spawner):
             self.api_token = state.get('api_token', '')
             self.sendmail = state.get('sendmail', False)
             self.login_handler = state.get('loginhandler', '')
+            self.useraccs_complete = state.get('useraccs_complete', False)
         else:
             self.job_status = None
             self.db_progs_no = -1
@@ -83,6 +86,7 @@ class J4J_Spawner(Spawner):
             self.api_token = ''
             self.sendmail = False
             self.login_handler = ''
+            self.useraccs_complete = False
 
     def get_state(self):
         """get the current state"""
@@ -93,6 +97,7 @@ class J4J_Spawner(Spawner):
         state['api_token'] = self.api_token
         state['sendmail'] = self.sendmail
         state['loginhandler'] = self.login_handler
+        state['useraccs_complete'] = self.useraccs_complete
         return state
 
     @property
@@ -419,6 +424,7 @@ class J4J_Spawner(Spawner):
             #if not self.name:
             #    raise Exception("{} - Do not allow to start without a name".format(self._log_name.lower()))
             db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
+            self.load_state(db_spawner.state)
             if db_spawner:
                 self.user.db.refresh(db_spawner)
                 if db_spawner.user_options:
@@ -426,19 +432,26 @@ class J4J_Spawner(Spawner):
                     self.log.info("{} - Start with options from first server_start for this spawner: {}".format(self._log_name.lower(), self.user_options))
                     return ""
             if not self.html_code == "":
-                return self.html_code
+                if self.useraccs_complete: 
+                    return self.html_code
             db_user = self.user.db.query(orm.User).filter(orm.User.name == self.user.name).first()
             if db_user:
                 self.user.db.refresh(db_user)
                 self.user.encrypted_auth_state = db_user.encrypted_auth_state
             state = await self.user.get_auth_state()
+            if state.get('useraccs_complete', False) == self.useraccs_complete and not self.html_code == "": 
+                return self.html_code
             user_dic = state.get('user_dic', {})
+            self.useraccs_complete = state.get('useraccs_complete', False)
+            # save state in db
+            setattr(db_spawner, 'state', self.get_state())
+            self.user.db.commit()
             tunnel_token = get_token(self.user.authenticator.tunnel_token_path)
             user_dic, maintenance = get_maintenance(user_dic, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
                 self.log.info("{} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
             reservations_var = reservations(user_dic, self.reservation_paths)
-            self.html_code = create_html(user_dic, reservations_var, self.user.authenticator.resources, self.style_path, self.dockerimages_path, self.project_checkbox_path, maintenance)
+            self.html_code = create_html(user_dic, reservations_var, self.user.authenticator.resources, self.style_path, self.dockerimages_path, self.project_checkbox_path, maintenance, self.useraccs_complete)
         except Exception:
             self.log.exception("Could not build html page")
             #self.log.exception("{} - Could not build html page".format(self._log_name.lower()))

@@ -531,7 +531,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'expire': expire,
                                'oauth_user': resp_json,
                                'user_dic': user_accs,
-                               'user_accs_complete': not waitforaccupdate,
+                               'useraccs_complete': not waitforaccupdate,
                                'scope': scope,
                                'login_handler': 'jscldap',
                                'errormsg': ''
@@ -681,7 +681,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'expire': expire,
                                'oauth_user': resp_json,
                                'user_dic': user_accs,
-                               'user_accs_complete': not waitforaccupdate,
+                               'useraccs_complete': not waitforaccupdate,
                                'scope': scope,
                                'login_handler': 'jscusername',
                                'errormsg': ''

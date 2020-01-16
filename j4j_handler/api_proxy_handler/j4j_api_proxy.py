@@ -6,6 +6,7 @@ Created on May 10, 2019
 
 import uuid
 import socket
+import os
 
 from datetime import datetime
 from jupyterhub.apihandlers.base import APIHandler
@@ -17,6 +18,12 @@ class J4J_APIProxyHandler(APIHandler):
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
         self.log.info("{} - Remove proxys for server: {}".format(uuidcode, server_name))
+        with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
+            intern_token = f.read().rstrip()
+        if self.request.headers.get('Intern-Authorization', '') != intern_token:
+            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.set_status(401)
+            return
         user = None
         if 'Authorization' in self.request.headers.keys():
             s = self.request.headers.get('Authorization').split()
@@ -68,6 +75,12 @@ class J4J_APIProxyHandler(APIHandler):
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
         self.log.info("{} - Post Proxy Handler, server_name: {}".format(uuidcode, server_name))
+        with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
+            intern_token = f.read().rstrip()
+        if self.request.headers.get('Intern-Authorization', '') != intern_token:
+            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.set_status(401)
+            return
         self.set_header('Content-Type', 'text/plain')
         user = None
         if 'Authorization' in self.request.headers.keys():
