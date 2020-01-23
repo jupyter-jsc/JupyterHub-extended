@@ -76,15 +76,19 @@ def juwels_jureca_reservation(name, s, data):
     dic = {}
     ret = {'Account': {}, 'Project': {}}
     for reservation in li[1:]:
-        lines = reservation.replace("\n", " ")
-        lineList = lines.split()
-        dic[lineList[0]] = {}
-        for pair in lineList[1:]:
-            keyValue = pair.split("=")
-            if len(keyValue) == 0:
-                dic[lineList[0]][keyValue[0]] = "unknown"
-            else:
-                dic[lineList[0]][keyValue[0]] = keyValue[1]
+        try:
+            lines = reservation.replace("\n", " ")
+            lineList = lines.split()
+            dic[lineList[0]] = {}
+            for pair in lineList[1:]:
+                keyValue = pair.split("=")
+                try:
+                    dic[lineList[0]][keyValue[0]] = keyValue[1]
+                except IndexError:
+                    dic[lineList[0]][keyValue[0]] = "<unknown>"
+        except:
+            del dic[lineList[0]]
+            continue
     name = name.upper()
     if name in data.keys():
         for account in data.get(name).keys():
