@@ -81,7 +81,10 @@ def juwels_jureca_reservation(name, s, data):
         dic[lineList[0]] = {}
         for pair in lineList[1:]:
             keyValue = pair.split("=")
-            dic[lineList[0]][keyValue[0]] = keyValue[1]
+            if len(keyValue) == 0:
+                dic[lineList[0]][keyValue[0]] = "unknown"
+            else:
+                dic[lineList[0]][keyValue[0]] = keyValue[1]
     name = name.upper()
     if name in data.keys():
         for account in data.get(name).keys():
