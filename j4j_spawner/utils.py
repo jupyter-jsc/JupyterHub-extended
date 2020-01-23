@@ -85,7 +85,7 @@ def juwels_jureca_reservation(name, s, data):
                 try:
                     dic[lineList[0]][keyValue[0]] = keyValue[1]
                 except IndexError:
-                    dic[lineList[0]][keyValue[0]] = "<unknown>"
+                    dic[lineList[0]][keyValue[0]] = "unknown"
         except:
             del dic[lineList[0]]
             continue
