@@ -10,7 +10,7 @@ colon = '--colon--' # replace : with --colon-- in variable names
 slash = '--slash--' # "
 dot = '--dot--'     # "
 
-def create_html(user_accs, reservations, partitions_path, stylepath, dockerimagespath, project_checkbox_path, maintenance):
+def create_html(user_accs, reservations, partitions_path, stylepath, dockerimagespath, project_checkbox_path, maintenance, useraccs_complete):
     with open(partitions_path) as f:
         resources_json = json.load(f)
     with open(project_checkbox_path) as f:
@@ -51,6 +51,8 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
     html += '<div class="j4j">\n'
     script += function_hide_all(user_accs, reservations)
     html += '  <div id="system_div" style="display:display">\n'
+    if not useraccs_complete:
+        html += '<center><h4>We"re looking for your accounts in the background.<br>If you"re missing accounts please refresh the page after a few seconds.</h4></center>'
     t1, t2 = dropdown(user_accs_w_docker, 'System:', 'system')
     html += t1
     html += '  </div>\n'
