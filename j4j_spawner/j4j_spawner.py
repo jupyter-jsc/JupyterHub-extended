@@ -109,7 +109,7 @@ class J4J_Spawner(Spawner):
         while self.progs_no < 4:
             db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.name == self.name).filter(orm.Spawner.user_id == self.user.orm_user.id).first()
             if not db_spawner:
-                self.log.debug("{} - {} not found.".format(self._log_name.lower(), self.name))
+                self.log.debug("userserver={} - servername={} not found.".format(self._log_name.lower(), self.name))
                 return
             self.user.db.refresh(db_spawner)
             self.load_state(db_spawner.state)
@@ -150,7 +150,6 @@ class J4J_Spawner(Spawner):
             target = urls.get('hub', {}).get('url_hostname', 'http://<hostname>:8081')
             target = target.replace('<hostname>', self.hostname)
             proxy_urls = []
-            self.log.debug("{} - BaseUrl: {} - {}".format(self._log_name.lower(), self.hub.base_url, self.hub.base_url != '/'))
             if self.hub.base_url == '/hub/':
                 proxy_base_url = urls.get('hub', {}).get('url_api', 'http://j4j_proxy:8001')
             else:
@@ -166,15 +165,14 @@ class J4J_Spawner(Spawner):
                 with closing(requests.post(proxy_base_url+proxy_url, headers=proxy_headers, json=proxy_json, verify=False)) as r:
                     if r.status_code != 201:
                         raise Exception('{} {} {}'.format(proxy_base_url+proxy_url, r.status_code, r.text))
-                self.log.debug("{} - {} Added route to proxy: {} => {}".format(self._log_name.lower(), uuidcode, proxy_url, target))
+                self.log.debug("userserver={} - uuidcode={} Added route to proxy: {} => {}".format(self._log_name.lower(), uuidcode, proxy_url, target))
         except:
-            self.log.exception("{} - {} Could not add route to proxy".format(self._log_name.lower(), uuidcode))
+            self.log.exception("userserver={} - uuidcode={} Could not add route to proxy".format(self._log_name.lower(), uuidcode))
 
     def remove_proxys(self, uuidcode, urls=None):
         # delete route from proxy
-        self.log.debug("{} - {} - Remove all proxy routes".format(self._log_name.lower(), uuidcode))
+        self.log.debug("userserver={} - uuidcode={} - Remove all proxy routes".format(self._log_name.lower(), uuidcode))
         proxy_urls = []
-        self.log.debug("{} - BaseUrl: {} - {}".format(self._log_name.lower(), self.hub.base_url, self.hub.base_url != '/'))
         try:
             if not urls:
                 with open(self.user.authenticator.j4j_urls_paths, 'r') as f:
@@ -198,11 +196,11 @@ class J4J_Spawner(Spawner):
                     with closing(requests.delete(proxy_base_url+proxy_url, headers=proxy_headers, verify=False)) as r:
                         if r.status_code != 204 and r.status_code != 404:
                             raise Exception('{} {}'.format(r.status_code, r.text))
-                    self.log.debug("{} - {} Delete route from proxy: {}".format(self._log_name.lower(), uuidcode, proxy_url))
+                    self.log.debug("userserver={} - uuidcode={} Delete route from proxy: {}".format(self._log_name.lower(), uuidcode, proxy_url))
                 except:
-                    self.log.exception("{} - {} Could not delete route {} from proxy".format(self._log_name.lower(), uuidcode, proxy_url))
+                    self.log.exception("userserver={} - uuidcode={} Could not delete route {} from proxy".format(self._log_name.lower(), uuidcode, proxy_url))
         except:
-            self.log.exception("{} -{} Could not delete route from proxy".format(self._log_name.lower(), uuidcode))
+            self.log.exception("userserver={} - uuidcode={} Could not delete route from proxy".format(self._log_name.lower(), uuidcode))
 
     async def start(self):
         if 'system' not in self.user_options:
@@ -211,7 +209,7 @@ class J4J_Spawner(Spawner):
 
         # Create uuidcode to track this specific Call through the webservices
         uuidcode = uuid.uuid4().hex
-        self.log.info("{} - Start JupyterLab. UUID: {} . Options: {}".format(self._log_name.lower(), uuidcode, self.user_options))
+        self.log.info("userserver={} - StartTest JupyterLab. uuidcode={} . Options: system={}, account={}, sendmail={}, project={}, partition={}, reservation={}, checkboxes={}, resources={}".format(self._log_name.lower(), uuidcode, self.user_options.get('system', ''), self.user_options.get('account', ''), self.user_options.get('sendmail', False), self.user_options.get('project', ''), self.user_options.get('partition', ''), self.user_options.get('reservation', ''), self.user_options.get('Checkboxes', []), self.user_options.get('Resources', {})))
         # get a few JupyterHub variables, which we will need to create spawn_header and spawn_data
         db_user = self.user.db.query(orm.User).filter(orm.User.name == self.user.name).first()
         if db_user:
@@ -223,12 +221,12 @@ class J4J_Spawner(Spawner):
             raise Exception("{} - Could not find auth state. Please login again.".format(uuidcode))
 
         env = self.get_env()
-        self.log.debug("{} - Environment: {}".format(uuidcode, env))
+        self.log.debug("uuidcode={} - Environment: {}".format(uuidcode, env))
         if env['JUPYTERHUB_API_TOKEN'] == "":
             env = self.get_env()
-            self.log.debug("{} - Environment had no token, second try: {}".format(uuidcode, env))
+            self.log.debug("uuidcode={} - Environment had no token, second try: {}".format(uuidcode, env))
             if env['JUPYTERHUB_API_TOKEN'] == "":
-                self.log.debug("{} - Still nothing. Try to do it manually".format(uuidcode))
+                self.log.debug("uuidcode={} - Still nothing. Try to do it manually".format(uuidcode))
                 try:
                     username_at_split = self.user.name.split('@')
                     env = {
@@ -250,10 +248,10 @@ class J4J_Spawner(Spawner):
                     self.user.db.commit()
                     env['JUPYTERHUB_API_TOKEN'] = self.api_token
                     env['JPY_API_TOKEN'] = env['JUPYTERHUB_API_TOKEN']
-                    self.log.debug("{} - New Environment: {}".format(uuidcode, env))
+                    self.log.debug("uuidcode={} - New Environment: {}".format(uuidcode, env))
                 except:
-                    self.log.exception("{} - Could not create own environment".format(uuidcode))
-                    raise Exception("{} - Could not load environment. Please try again".format(uuidcode))
+                    self.log.exception("uuidcode={} - Could not create own environment".format(uuidcode))
+                    raise Exception("uuidcode={} - Could not load environment. Please try again".format(uuidcode))
         if self.user_options.get('system').lower() != 'docker':
             if 'JUPYTERHUB_ACTIVITY_URL' in env:
                 del env['JUPYTERHUB_ACTIVITY_URL']
@@ -298,13 +296,13 @@ class J4J_Spawner(Spawner):
                                                                           method,
                                                                           method_args)
             if status_code != 202:
-                self.log.warning("{} - J4J_Orchestrator Post failed. J4J_Worker Response: {} {} {}".format(uuidcode, text.strip(), status_code, response_header))
-                raise Exception("{} - J4J_Worker Post failed. Throw exception because of wrong status_code: {}".format(uuidcode, status_code))
+                self.log.warning("uuidcode={} - J4J_Orchestrator Post failed. J4J_Worker Response: {} {} {}".format(uuidcode, text.strip(), status_code, response_header))
+                raise Exception("uuidcode={} - J4J_Worker Post failed. Throw exception because of wrong status_code: {}".format(uuidcode, status_code))
             else:
-                self.log.debug("{} - Spawn successful sent to J4J_Orchestrator. Port: {}".format(uuidcode, text))
+                self.log.debug("uuidcode={} - Spawn successful sent to J4J_Orchestrator. Port: {}".format(uuidcode, text))
                 self.port = int(text.strip().replace('"', '').replace("'", ''))
         except Exception:
-            self.log.exception("{} - J4J_Orchestrator communication failed. Raise web.HTTPError to inform user. {} {}".format(uuidcode, method, self.user.authenticator.remove_secret(method_args)))
+            self.log.exception("uuidcode={} - J4J_Orchestrator communication failed. Raise web.HTTPError to inform user. {} {}".format(uuidcode, method, self.user.authenticator.remove_secret(method_args)))
             raise Exception('A mandatory background service is not running. An administrator is informed. Sorry for the inconvenience.')
 
         if self.user_options.get('sendmail', False):
@@ -320,10 +318,10 @@ class J4J_Spawner(Spawner):
 
     async def poll(self):
         uuidcode = uuid.uuid4().hex
-        self.log.info("{} - Poll JupyterLab: {}".format(self._log_name.lower(), uuidcode))
+        self.log.info("userserver={} - Poll JupyterLab: uuidcode={}".format(self._log_name.lower(), uuidcode))
         db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
         if not db_spawner:
-            self.log.warning("{} - {} - Poll for Spawner that does not exist in database".format(self._log_name.lower(), uuidcode))
+            self.log.warning("userserver={} - uuidcode={} - Poll for Spawner that does not exist in database".format(self._log_name.lower(), uuidcode))
             return 0
         self.user.db.refresh(db_spawner)
         #self.log.debug("{} - Db_spawner_state: {}".format(uuidcode, db_spawner.state))
@@ -338,13 +336,13 @@ class J4J_Spawner(Spawner):
             self.uuidcode_tmp = None
         else:
             uuidcode = uuid.uuid4().hex
-        self.log.info("{} - Stop JupyterLab: {}".format(self._log_name.lower(), uuidcode))
+        self.log.info("userserver={} - Stop JupyterLab: uuidcode={}".format(self._log_name.lower(), uuidcode))
         self.progs_no = 0
         with open(self.user.authenticator.j4j_urls_paths, 'r') as f:
             urls = json.load(f)
         self.remove_proxys(uuidcode, urls)
         if self.stopped:
-            self.log.debug("{} - {} Already stopped by J4J_Orchestrator or J4J_Worker".format(self._log_name.lower(), uuidcode))
+            self.log.debug("userserver={} - uuidcode={} Already stopped by J4J_Orchestrator or J4J_Worker".format(self._log_name.lower(), uuidcode))
             self.stopped = False
             return
         db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
@@ -382,12 +380,12 @@ class J4J_Spawner(Spawner):
                                                                           method,
                                                                           method_args)
             if status_code != 202:
-                self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(header['uuidcode'], text, status_code))
-                raise Exception("{} - Failed J4J_Orchestrator communication. Throw exception because of wrong status_code: {}".format(uuidcode, status_code))
+                self.log.warning("uuidcode={} - Failed J4J_Orchestrator communication: {} {}".format(header['uuidcode'], text, status_code))
+                raise Exception("uuidcode={} - Failed J4J_Orchestrator communication. Throw exception because of wrong status_code: {}".format(uuidcode, status_code))
         except (requests.exceptions.InvalidSchema, requests.exceptions.ConnectionError):
-            self.log.exception("{} - {} - J4J_Orchestrator not running? Could not stop UNICORE Job. May still run. {} {}".format(self._log_name.lower(), uuidcode, url, self.user.authenticator.remove_secret(header)))
+            self.log.exception("userserver={} - uuidcode={} - J4J_Orchestrator not running? Could not stop UNICORE Job. May still run. {} {}".format(self._log_name.lower(), uuidcode, url, self.user.authenticator.remove_secret(header)))
         except:
-            self.log.exception("{} - {} - Could not stop UNICORE Job. May still run. {} {}".format(self._log_name.lower(), uuidcode, url, self.user.authenticator.remove_secret(header)))
+            self.log.exception("userserver={} - uuidcode={} - Could not stop UNICORE Job. May still run. {} {}".format(self._log_name.lower(), uuidcode, url, self.user.authenticator.remove_secret(header)))
         finally:
             new_state = {
               "job_status": None,
@@ -401,22 +399,22 @@ class J4J_Spawner(Spawner):
 
     async def cancel(self, uuidcode, stopped):
         try:
-            self.log.info("{} - Cancel JupyterLab: {}".format(self._log_name.lower(), uuidcode))
+            self.log.info("userserver={} - Cancel JupyterLab: uuidcode={}".format(self._log_name.lower(), uuidcode))
             if str(type(self._spawn_future)) == "<class '_asyncio.Task'>" and self._spawn_future._state in ['PENDING']:
-                self.log.debug("{} - {} Spawner is pending, try to cancel".format(self._log_name.lower(), uuidcode))
+                self.log.debug("userserver={} - uuidcode={} Spawner is pending, try to cancel".format(self._log_name.lower(), uuidcode))
                 self.stopped = False
                 self.uuidcode_tmp = uuidcode
                 await self.user.stop(self.name)
                 self._spawn_future.set_result('cancelled')
                 return True
             else:
-                self.log.debug("{} - {} Spawner is not pending. Stop it normally.".format(self._log_name.lower(), uuidcode))
+                self.log.debug("userserver={} - uuidcode={} Spawner is not pending. Stop it normally.".format(self._log_name.lower(), uuidcode))
                 self.stopped = stopped
                 self.uuidcode_tmp = uuidcode
                 await self.user.stop(self.name)
                 return True
         except:
-            self.log.exception("{} - Unknown Error while cancelling Server".format(self._log_name.lower()))
+            self.log.exception("userserver={} - Unknown Error while cancelling Server".format(self._log_name.lower()))
             return False
 
     async def get_options_form(self):
@@ -429,7 +427,7 @@ class J4J_Spawner(Spawner):
                 self.user.db.refresh(db_spawner)
                 if db_spawner.user_options:
                     self.user_options = db_spawner.user_options
-                    self.log.info("{} - Start with options from first server_start for this spawner: {}".format(self._log_name.lower(), self.user_options))
+                    self.log.info("userserver={} - Start with options from first server_start for this spawner: {}".format(self._log_name.lower(), self.user_options))
                     return ""
             if not self.html_code == "":
                 if self.useraccs_complete: 
@@ -449,7 +447,7 @@ class J4J_Spawner(Spawner):
             tunnel_token = get_token(self.user.authenticator.tunnel_token_path)
             user_dic, maintenance = get_maintenance(user_dic, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
-                self.log.info("{} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
+                self.log.info("userserver={} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
             reservations_var = reservations(user_dic, self.reservation_paths)
             self.html_code = create_html(user_dic, reservations_var, self.user.authenticator.resources, self.style_path, self.dockerimages_path, self.project_checkbox_path, maintenance, self.useraccs_complete)
         except Exception:

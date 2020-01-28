@@ -8,7 +8,7 @@ from contextlib import closing
 import requests
 
 def j4j_orchestrator_request(uuidcode, logger, method, method_args):
-    logger.debug("{} - J4J_Orchestrator_Request {}".format(uuidcode, method))
+    logger.debug("uuidcode={} - J4J_Orchestrator_Request {}".format(uuidcode, method))
     if method == "POST":
         with closing(requests.post(method_args.get('url'),
                                    headers = method_args.get('headers', {}),

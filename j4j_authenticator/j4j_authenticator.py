@@ -307,19 +307,19 @@ class BaseAuthenticator(GenericOAuthenticator):
                 #self.log.debug("{} - Spawner {} is in memory and active".format(user.name, name))
                 if not spawner[name]['active']:
                     uuidcode = uuid.uuid4().hex
-                    self.log.debug("{} - Spawner {} should not be active. Delete it: {}".format(user.name, name, uuidcode))
+                    self.log.debug("{} - Spawner servername={} should not be active. Delete it: uuidcode={}".format(user.name, name, uuidcode))
                     try:
                         await user.spawners[name].cancel(uuidcode, True)
                     except:
-                        self.log.warning("{} - Could not cancel server. Try to stop it".format(uuidcode))
+                        self.log.warning("uuidcode={} - Could not cancel server. Try to stop it".format(uuidcode))
                         try:
                             await user.stop(name)
                         except:
-                            self.log.warning("{} - Could not stop server. Try to delete it".format(uuidcode))
+                            self.log.warning("uuidcode={} - Could not stop server. Try to delete it".format(uuidcode))
                             try:
                                 del user.spawners[name]
                             except:
-                                self.log.warning("{} - Could not delete from dict".format(uuidcode))
+                                self.log.warning("uuidcode={} - Could not delete from dict".format(uuidcode))
                 else:
                     #self.log.debug("{} - Spawner {} should be active. Check server_url and port".format(user.name, name))
                     db_server = user.db.query(orm.Server).filter(orm.Server.id == spawner[name]['server_id']).first()
@@ -378,13 +378,13 @@ class BaseAuthenticator(GenericOAuthenticator):
     async def authenticate(self, handler, data=None):
         uuidcode = uuid.uuid4().hex
         if (handler.__class__.__name__ == "JSCLDAPCallbackHandler"):
-            self.log.debug("{} - Call JSCLDAP_authenticate".format(uuidcode))
+            self.log.debug("uuidcode={} - Call JSCLDAP_authenticate".format(uuidcode))
             return await self.jscldap_authenticate(handler, uuidcode, data)
         elif (handler.__class__.__name__ == "JSCUsernameCallbackHandler"):
-            self.log.debug("{} - Call JSCUsername_authenticate".format(uuidcode))
+            self.log.debug("uuidcode={} - Call JSCUsername_authenticate".format(uuidcode))
             return await self.jscusername_authenticate(handler, uuidcode, data)
         else:
-            self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
+            self.log.warning("uuidcode={} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
             return "Username"
 
     async def jscldap_authenticate(self, handler, uuidcode, data=None):
@@ -402,7 +402,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         if self.jscldap_token_url:
             url = self.jscldap_token_url
         else:
-            raise ValueError("{} - Please set the JSCLDAP_TOKEN_URL environment variable".format(uuidcode))
+            raise ValueError("uuidcode={} - Please set the JSCLDAP_TOKEN_URL environment variable".format(uuidcode))
 
         b64key = base64.b64encode(
             bytes(
@@ -451,7 +451,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         username_key = unity[self.jscldap_authorize_url]['username_key']
 
         if not resp_json.get(username_key):
-            self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
+            self.log.error("uuidcode={} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
             return
 
         req_exp = HTTPRequest(unity[self.jscldap_token_url]['links']['tokeninfo'],
@@ -463,14 +463,14 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         tokeninfo_exp_key = unity[self.jscldap_token_url].get('tokeninfo_exp_key', 'exp')
         if not resp_json_exp.get(tokeninfo_exp_key):
-            self.log.error("{} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
+            self.log.error("uuidcode={} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
             return
 
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key).split('=')[1]
         username = self.normalize_username(username)
-        self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
-        self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
+        self.log.info("uuidcode={} - UserLogin: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
+        self.log.debug("uuidcode={} - Revoke old tokens for user {}".format(uuidcode, username))
         try:
             with open(self.j4j_urls_paths, 'r') as f:
                 j4j_paths = json.load(f)
@@ -492,23 +492,23 @@ class BaseAuthenticator(GenericOAuthenticator):
                                       json=json_dic,
                                       verify=False)) as r:
                 if r.status_code != 202:
-                    self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+                    self.log.warning("uuidcode={} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
         except:
-            self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
+            self.log.exception("uuidcode={} - Could not revoke old tokens for {}".format(uuidcode, username))
 
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
-        self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+        self.log.info("uuidcode={} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
 
         # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
         # Since the information from Unity and ssh are identical, it makes no sense to do it if len(hpc_infos) != 0
         if len(hpc_infos) == 0:
             try:
-                self.log.info("{} - Try to get HPC_Infos via ssh".format(uuidcode))
+                self.log.info("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
                 hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
-                self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
+                self.log.info("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
             except:
-                self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
+                self.log.exception("uuidcode={} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
         if type(hpc_infos) == str:
             if len(hpc_infos) == 0:
                 hpc_infos = []
@@ -551,7 +551,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         if self.jscusername_token_url:
             url = self.jscusername_token_url
         else:
-            raise ValueError("{} - Please set the JSCUSERNAME_TOKEN_URL environment variable".format(uuidcode))
+            raise ValueError("uuidcode={} - Please set the JSCUSERNAME_TOKEN_URL environment variable".format(uuidcode))
 
         b64key = base64.b64encode(
             bytes(
@@ -599,7 +599,7 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         username_key = unity[self.jscusername_authorize_url]['username_key']
         if not resp_json.get(username_key):
-            self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
+            self.log.error("uuidcode={} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
             return
 
         req_exp = HTTPRequest(unity[self.jscusername_token_url]['links']['tokeninfo'],
@@ -611,14 +611,14 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         tokeninfo_exp_key = unity[self.jscusername_token_url].get('tokeninfo_exp_key', 'exp')
         if not resp_json_exp.get(tokeninfo_exp_key):
-            self.log.error("{} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
+            self.log.error("uuidcode={} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
             return
 
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key).lower()
         username = self.normalize_username(username)
-        self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
-        self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
+        self.log.info("uuidcode={} - UserLogin: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
+        self.log.debug("uuidcode={} - Revoke old tokens for user {}".format(uuidcode, username))
         try:
             with open(self.j4j_urls_paths, 'r') as f:
                 j4j_paths = json.load(f)
@@ -640,9 +640,9 @@ class BaseAuthenticator(GenericOAuthenticator):
                                       json=json_dic,
                                       verify=False)) as r:
                 if r.status_code != 202:
-                    self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+                    self.log.warning("uuidcode={} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
         except:
-            self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
+            self.log.exception("uuidcode={} - Could not revoke old tokens for {}".format(uuidcode, username))
 
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
@@ -653,11 +653,11 @@ class BaseAuthenticator(GenericOAuthenticator):
             pattern = re.compile("^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$")
             if pattern.match(username):
                 try:
-                    self.log.info("{} - Try to get HPC_Infos via ssh".format(uuidcode))
+                    self.log.info("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
                     hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
-                    self.log.info("{} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
+                    self.log.info("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
                 except:
-                    self.log.exception("{} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
+                    self.log.exception("uuidcode={} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
         if type(hpc_infos) == str:
             if len(hpc_infos) == 0:
                 hpc_infos = []
@@ -694,10 +694,10 @@ class BaseAuthenticator(GenericOAuthenticator):
                 unicore_file = json.load(f)
             machine_list = unicore_file.get('machines', [])
             # remove machines that are already served via Unity or ssh
-            self.log.info("{} - Check user_acc keys: {}".format(uuidcode, user_accs.keys()))
+            self.log.info("uuidcode={} - Check user_acc keys: {}".format(uuidcode, user_accs.keys()))
             for m in user_accs.keys():
                 if m in machine_list:
-                    self.log.info("{} - Remove: {}".format(uuidcode, m))
+                    self.log.info("uuidcode={} - Remove: {}".format(uuidcode, m))
                     machine_list.remove(m)
             if len(machine_list) > 0:
                 machines = ' '.join(machine_list)
@@ -709,17 +709,17 @@ class BaseAuthenticator(GenericOAuthenticator):
                           'accesstoken': accesstoken,
                           'machines': machines}
                 url = j4j_paths.get('orchestrator', {}).get('url_unicorex', '<no_url_found>')
-                self.log.info("{} - GET to {} url with {}".format(uuidcode, url, header))
+                self.log.info("uuidcode={} - GET to {} url with {}".format(uuidcode, url, header))
                 with closing(requests.get(url,
                                           headers=header,
                                           verify=False)) as r:
                     if r.status_code == 204:
                         return True
                     else:
-                        self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+                        self.log.warning("uuidcode={} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
                         return False
         except:
-            self.log.exception("{} - Could not check for other HPC accounts via UNICORE/X for {}".format(uuidcode, username))
+            self.log.exception("uuidcode={} - Could not check for other HPC accounts via UNICORE/X for {}".format(uuidcode, username))
         return False
 
     def get_hpc_infos_via_ssh(self, uuidcode, username):
@@ -729,10 +729,10 @@ class BaseAuthenticator(GenericOAuthenticator):
         try:
             output = check_output(cmd, stderr=STDOUT, timeout=3, universal_newlines=True)
         except CalledProcessError:
-            self.log.exception("{} - No HPC infos for {}".format(uuidcode, username))
+            self.log.exception("uuidcode={} - No HPC infos for {}".format(uuidcode, username))
             return []
         hpc_infos = output.strip().split('\n')
-        self.log.info("{} - Bare HPC_Infos: {}".format(uuidcode, hpc_infos))
+        self.log.info("uuidcode={} - Bare HPC_Infos: {}".format(uuidcode, hpc_infos))
         additional_lines = []
         try:
             if len(self.hpc_infos_add_queues) > 0:
@@ -757,6 +757,6 @@ class BaseAuthenticator(GenericOAuthenticator):
                     system_project[system].append(project)
                 hpc_infos.extend(additional_lines)
         except:
-            self.log.exception("{} - Could not add additional queues ({}) to hpc_infos of user {}".format(uuidcode, self.hpc_infos_add_queues, username))
-        self.log.info("{} - Return: {}".format(uuidcode, hpc_infos))
+            self.log.exception("uuidcode={} - Could not add additional queues ({}) to hpc_infos of user {}".format(uuidcode, self.hpc_infos_add_queues, username))
+        self.log.info("uuidcode={} - Return: {}".format(uuidcode, hpc_infos))
         return hpc_infos
