@@ -70,6 +70,9 @@ class J4J_APIUserAccsHandler(APIHandler):
                 if not jdata.get('useraccs', None):
                     self.set_status(400)
                     self.log.debug("uuidcode={} - No key useraccs in data: {}".format(uuidcode, jdata))
+                    state = await user.get_auth_state()
+                    state['useraccs_complete'] = True
+                    await user.save_auth_state(state)
                     return
                 db_user = user.db.query(User).filter(User.name == user.name).first()
                 if db_user:
@@ -86,6 +89,9 @@ class J4J_APIUserAccsHandler(APIHandler):
                 self.set_status(204)
                 return
             except:
+                state = await user.get_auth_state()
+                state['useraccs_complete'] = True
+                await user.save_auth_state(state)
                 self.set_status(500)
                 self.log.exception("uuidcode={} - Could not update useraccs for user {}".format(uuidcode, username))
                 return
