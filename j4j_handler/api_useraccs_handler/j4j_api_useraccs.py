@@ -6,6 +6,7 @@ Created on May 10, 2019
 
 import uuid
 import os
+import json
 
 from jupyterhub.apihandlers.base import APIHandler
 from jupyterhub.orm import APIToken, User
@@ -65,16 +66,17 @@ class J4J_APIUserAccsHandler(APIHandler):
         user = self.find_user(username)
         if user:
             try:
-                if not data.get('useraccs', None):
+                jdata = json.loads(data)
+                if not jdata.get('useraccs', None):
                     self.set_status(400)
-                    self.log.debug("uuidcode={} - No key useraccs in data: {}".format(uuidcode, data))
+                    self.log.debug("uuidcode={} - No key useraccs in data: {}".format(uuidcode, jdata))
                     return
                 db_user = user.db.query(User).filter(User.name == user.name).first()
                 if db_user:
                     user.db.refresh(db_user)
                     user.encrypted_auth_state = db_user.encrypted_auth_state
                 state = await user.get_auth_state()
-                new_accs = fit_partition(data.get('useraccs'), user.authenticator.resources)
+                new_accs = fit_partition(jdata.get('useraccs'), user.authenticator.resources)
                 for machine in new_accs.keys():
                     new_accs[machine]["!!DISCLAIMER!!"] = {}
                 state['user_dic'].update(new_accs)
