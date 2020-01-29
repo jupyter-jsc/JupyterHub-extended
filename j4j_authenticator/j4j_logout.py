@@ -19,7 +19,7 @@ class J4J_LogoutHandler(LogoutHandler):
         user = self.current_user
         if user:
             uuidcode = uuid.uuid4().hex
-            self.log.info("{} - {} User Logout".format(user.name, uuidcode))
+            self.log.info("{} - uuidcode={} UserLogout".format(user.name, uuidcode))
             state = await user.get_auth_state()
             if state:
                 with open(user.authenticator.orchestrator_token_path, 'r') as f:
@@ -38,15 +38,15 @@ class J4J_LogoutHandler(LogoutHandler):
                 else:
                     header['tokenurl'] = os.environ.get('JSCLDAP_TOKEN_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2/token')
                     header['authorizeurl'] = os.environ.get('JSCLDAP_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as/oauth2-authz')
-                self.log.debug("{} - User Spawners: {}".format(uuidcode, user.spawners))
+                self.log.debug("uuidcode={} - User Spawners: {}".format(uuidcode, user.spawners))
                 names = []
                 db_spawner_list = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == user.orm_user.id).all()
                 for db_spawner in db_spawner_list:
                     names.append(db_spawner.name)
                 for name in names:
-                    self.log.debug("{} - 'Stop' {}".format(uuidcode, name))
+                    self.log.debug("uuidcode={} - 'Stop' {}".format(uuidcode, name))
                     await user.spawners[name].cancel(uuidcode, True)
-                self.log.debug("{} - Revoke access and refresh token - UUID: {}".format(user.name, uuidcode))
+                self.log.debug("{} - Revoke access and refresh token - uuidcode={}".format(user.name, uuidcode))
                 try:
                     with open(user.authenticator.j4j_urls_paths, 'r') as f:
                         urls = json.load(f)

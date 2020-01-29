@@ -80,5 +80,5 @@ class J4J_SpawnHandler(SpawnHandler):
             with closing(requests.post(proxy_base_url+proxy_url, headers=proxy_headers, json=proxy_json, verify=False)) as r:
                 if r.status_code != 201:
                     raise Exception('{} {}'.format(r.status_code, r.text))
-            self.log.debug("{}:{} - Added route to proxy: {} => {}".format(user.name, server_name, proxy_url, target))
+            self.log.debug("UID={} : {} - Added route to proxy: {} => {}".format(user.name, server_name, proxy_url, target))
         return

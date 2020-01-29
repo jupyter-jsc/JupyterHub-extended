@@ -15,11 +15,11 @@ class J4J_APICancelHandler(APIHandler):
         uuidcode = self.request.headers.get('uuidcode', None)
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
-        self.log.info("{} - Cancel Spawn for server: {}".format(uuidcode, server_name))
+        self.log.info("uuidcode={} - Cancel Spawn for server: {}".format(uuidcode, server_name))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:
-            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.log.warning("uuidcode={} - Could not validate Intern-Authorization".format(uuidcode))
             self.set_status(401)
             return
         error = self.request.headers.get('Error', None)
@@ -53,9 +53,9 @@ class J4J_APICancelHandler(APIHandler):
                 await user.spawners[server_name].cancel(uuidcode, self.request.headers.get('Stopped', 'false').lower() == 'true')
                 self.set_status(202)
             except:
-                self.log.exception("{} - {} Could not cancel the spawner: {}".format(user.name, uuidcode, server_name))
+                self.log.exception("UID={} - uuidcode={} Could not cancel the spawner: {}".format(user.name, uuidcode, server_name))
                 self.set_status(501)
-                self.write("Could not stop Server. Please look into the logs with the uuidcode: {}".format(uuidcode))
+                self.write("Could not stop Server. Please look into the logs with the uuidcode: uuidcode={}".format(uuidcode))
                 self.flush()
         else:
             self.set_status(404)
