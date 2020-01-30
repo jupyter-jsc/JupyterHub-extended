@@ -17,7 +17,7 @@ class J4J_APIUserAccsHandler(APIHandler):
         uuidcode = self.request.headers.get('uuidcode', None)
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
-        self.log.info("uuidcode={} - Get UserAccs Status for user: {}".format(uuidcode, username))
+        self.log.debug("uuidcode={} - Get UserAccs Status for user: {}".format(uuidcode, username))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:
@@ -49,7 +49,7 @@ class J4J_APIUserAccsHandler(APIHandler):
         uuidcode = self.request.headers.get('uuidcode', None)
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
-        self.log.info("uuidcode={} - Post useraccs for user: {}".format(uuidcode, username))
+        self.log.debug("uuidcode={} - Post useraccs for user: {}".format(uuidcode, username))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:
