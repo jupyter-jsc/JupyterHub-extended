@@ -20,7 +20,7 @@ class J4J_APIStatusHandler(APIHandler):
         uuidcode = self.request.headers.get('uuidcode', None)
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
-        self.log.info("uuidcode={} - GetStatus for server: servername={}".format(uuidcode, server_name))
+        self.log.debug("uuidcode={} - GetStatus for server: servername={}".format(uuidcode, server_name))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:
@@ -70,7 +70,7 @@ class J4J_APIStatusHandler(APIHandler):
             self.set_status(401)
             return
         data = self.request.body.decode("utf8")
-        self.log.info("uuidcode={} - Post Status Data: {}, Server_name: servername={}".format(uuidcode, data, server_name))
+        self.log.debug("uuidcode={} - Post Status Data: {}, Server_name: servername={}".format(uuidcode, data, server_name))
         self.set_header('Content-Type', 'text/plain')
         user = None
         if not data:
@@ -126,17 +126,17 @@ class J4J_APIStatusHandler(APIHandler):
                         s = smtplib.SMTP('mail.fz-juelich.de')
                         s.sendmail('jupyter.jsc@fz-juelich.de', user.name, msg)
                         s.quit()
-                        self.log.info("uuidcode={} - Send email to UID={} for servername={}".format(uuidcode, user.name, server_name))
+                        self.log.debug("uuidcode={} - Send email to UID={} for servername={}".format(uuidcode, user.name, server_name))
                         state['sendmail'] = False
                 elif status == 'stopped':
                     # spawner / job has stopped, so just 'stop' it for jupyterhub and everything's good
                     if str(type(user.spawners[server_name]._spawn_future)) == "<class '_asyncio.Task'>" and user.spawners[server_name]._spawn_future._state in ['PENDING']:
-                        self.log.info("uuidcode={} - UID={} Call User.cancel() for servername={}, because it's still pending".format(uuidcode, user.name, server_name))
+                        self.log.debug("uuidcode={} - UID={} Call User.cancel() for servername={}, because it's still pending".format(uuidcode, user.name, server_name))
                         await user.spawners[server_name].cancel(uuidcode, False)
-                        self.log.info("uuidcode={} - UID={} Call Stop after the job was cancelled to ensure that the memory state is right. servername={}".format(uuidcode, user.name, server_name))
+                        self.log.debug("uuidcode={} - UID={} Call Stop after the job was cancelled to ensure that the memory state is right. servername={}".format(uuidcode, user.name, server_name))
                         await user.stop(server_name)
                     else:
-                        self.log.info("uuidcode={} - UID={} Call User.stop() for servername={}".format(uuidcode, user.name, server_name))
+                        self.log.debug("uuidcode={} - UID={} Call User.stop() for servername={}".format(uuidcode, user.name, server_name))
                         user.spawners[server_name].uuidcode_tmp = uuidcode
                         await user.stop(server_name)
                     self.set_status(201)

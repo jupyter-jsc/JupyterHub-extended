@@ -15,7 +15,7 @@ class J4J_APICancelHandler(APIHandler):
         uuidcode = self.request.headers.get('uuidcode', None)
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
-        self.log.info("uuidcode={} - Cancel Spawn for server: {}".format(uuidcode, server_name))
+        self.log.debug("uuidcode={} - Cancel Spawn for server: {}".format(uuidcode, server_name))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:

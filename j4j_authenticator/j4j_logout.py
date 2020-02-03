@@ -19,7 +19,7 @@ class J4J_LogoutHandler(LogoutHandler):
         user = self.current_user
         if user:
             uuidcode = uuid.uuid4().hex
-            self.log.info("{} - uuidcode={} UserLogout".format(user.name, uuidcode))
+            self.log.info("username={}, uuidcode={}, action=logout".format(user.name, uuidcode))
             state = await user.get_auth_state()
             if state:
                 with open(user.authenticator.orchestrator_token_path, 'r') as f:

@@ -32,7 +32,7 @@ class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
         with open(self.authenticator.unity_file, 'r') as f:
             unity = json.load(f)
         redirect_uri = self.authenticator.get_callback_url(None, "JSCLDAP")
-        self.log.info('OAuth redirect: %r', redirect_uri)
+        self.log.debug('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
         self.set_state_cookie(state)
         self.authorize_redirect(
@@ -54,7 +54,7 @@ class JSCUsernameLoginHandler(OAuthLoginHandler, JSCUsernameEnvMixin):
         with open(self.authenticator.unity_file, 'r') as f:
             unity = json.load(f)
         redirect_uri = self.authenticator.get_callback_url(None, "JSCUsername")
-        self.log.info('OAuth redirect: %r', redirect_uri)
+        self.log.debug('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
         self.set_state_cookie(state)
         self.authorize_redirect(
@@ -469,8 +469,8 @@ class BaseAuthenticator(GenericOAuthenticator):
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key).split('=')[1]
         username = self.normalize_username(username)
-        self.log.info("uuidcode={} - UserLogin: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
-        self.log.debug("uuidcode={} - Revoke old tokens for user {}".format(uuidcode, username))
+        self.log.info("uuidcode={}, action=login, username={}".format(uuidcode, username))
+        self.log.debug("uuidcode={}, action=revoke, username={}".format(uuidcode, username))
         try:
             with open(self.j4j_urls_paths, 'r') as f:
                 j4j_paths = json.load(f)
@@ -498,15 +498,15 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
-        self.log.info("uuidcode={} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
+        self.log.debug("uuidcode={} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
 
         # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
         # Since the information from Unity and ssh are identical, it makes no sense to do it if len(hpc_infos) != 0
         if len(hpc_infos) == 0:
             try:
-                self.log.info("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
+                self.log.debug("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
                 hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
-                self.log.info("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
+                self.log.debug("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
             except:
                 self.log.exception("uuidcode={} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
         if type(hpc_infos) == str:
@@ -520,7 +520,6 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         # Check for HPC Systems in self.unicore
         waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
-        #self.log.info("{} - Save HPC Infos as dic {}".format(uuidcode, user_accs))
         return {
                 'name': username,
                 'auth_state': {
@@ -617,8 +616,8 @@ class BaseAuthenticator(GenericOAuthenticator):
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key).lower()
         username = self.normalize_username(username)
-        self.log.info("uuidcode={} - UserLogin: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
-        self.log.debug("uuidcode={} - Revoke old tokens for user {}".format(uuidcode, username))
+        self.log.info("uuidcode={}, action=login, username={}".format(uuidcode, username))
+        self.log.debug("uuidcode={}, action=revoke, username={}".format(uuidcode, username))
         try:
             with open(self.j4j_urls_paths, 'r') as f:
                 j4j_paths = json.load(f)
@@ -646,16 +645,15 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
-        #self.log.info("{} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
 
         # If it's empty and the username is an email address (and no train account) we can check for it via ssh
         if len(hpc_infos) == 0:
             pattern = re.compile("^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$")
             if pattern.match(username):
                 try:
-                    self.log.info("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
+                    self.log.debug("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
                     hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
-                    self.log.info("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
+                    self.log.debug("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
                 except:
                     self.log.exception("uuidcode={} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
         if type(hpc_infos) == str:
@@ -694,10 +692,10 @@ class BaseAuthenticator(GenericOAuthenticator):
                 unicore_file = json.load(f)
             machine_list = unicore_file.get('machines', [])
             # remove machines that are already served via Unity or ssh
-            self.log.info("uuidcode={} - Check user_acc keys: {}".format(uuidcode, user_accs.keys()))
+            self.log.debug("uuidcode={} - Check user_acc keys: {}".format(uuidcode, user_accs.keys()))
             for m in user_accs.keys():
                 if m in machine_list:
-                    self.log.info("uuidcode={} - Remove: {}".format(uuidcode, m))
+                    self.log.debug("uuidcode={} - Remove: {}".format(uuidcode, m))
                     machine_list.remove(m)
             if len(machine_list) > 0:
                 machines = ' '.join(machine_list)
@@ -709,7 +707,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                           'accesstoken': accesstoken,
                           'machines': machines}
                 url = j4j_paths.get('orchestrator', {}).get('url_unicorex', '<no_url_found>')
-                self.log.info("uuidcode={} - GET to {} url with {}".format(uuidcode, url, header))
+                self.log.debug("uuidcode={} - GET to {} url with {}".format(uuidcode, url, header))
                 with closing(requests.get(url,
                                           headers=header,
                                           verify=False)) as r:
@@ -732,7 +730,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             self.log.exception("uuidcode={} - No HPC infos for {}".format(uuidcode, username))
             return []
         hpc_infos = output.strip().split('\n')
-        self.log.info("uuidcode={} - Bare HPC_Infos: {}".format(uuidcode, hpc_infos))
+        self.log.debug("uuidcode={} - Bare HPC_Infos: {}".format(uuidcode, hpc_infos))
         additional_lines = []
         try:
             if len(self.hpc_infos_add_queues) > 0:
@@ -758,5 +756,5 @@ class BaseAuthenticator(GenericOAuthenticator):
                 hpc_infos.extend(additional_lines)
         except:
             self.log.exception("uuidcode={} - Could not add additional queues ({}) to hpc_infos of user {}".format(uuidcode, self.hpc_infos_add_queues, username))
-        self.log.info("uuidcode={} - Return: {}".format(uuidcode, hpc_infos))
+        self.log.debug("uuidcode={} - Return: {}".format(uuidcode, hpc_infos))
         return hpc_infos

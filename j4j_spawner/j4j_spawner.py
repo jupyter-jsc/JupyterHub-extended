@@ -209,7 +209,7 @@ class J4J_Spawner(Spawner):
 
         # Create uuidcode to track this specific Call through the webservices
         uuidcode = uuid.uuid4().hex
-        self.log.info("userserver={} - Start JupyterLab. uuidcode={} . Options: system={}, account={}, sendmail={}, project={}, partition={}, reservation={}, checkboxes={}, resources={}".format(self._log_name.lower(), uuidcode, self.user_options.get('system', ''), self.user_options.get('account', ''), self.user_options.get('sendmail', False), self.user_options.get('project', ''), self.user_options.get('partition', ''), self.user_options.get('reservation', ''), self.user_options.get('Checkboxes', []), self.user_options.get('Resources', {})))
+        self.log.info("userserver={}, uuidcode={}, action=start, system={}, account={}, sendmail={}, project={}, partition={}, reservation={}, checkboxes={}, resources={}".format(self._log_name.lower(), uuidcode, self.user_options.get('system', ''), self.user_options.get('account', ''), self.user_options.get('sendmail', False), self.user_options.get('project', ''), self.user_options.get('partition', ''), self.user_options.get('reservation', ''), self.user_options.get('Checkboxes', []), self.user_options.get('Resources', {})))
         # get a few JupyterHub variables, which we will need to create spawn_header and spawn_data
         db_user = self.user.db.query(orm.User).filter(orm.User.name == self.user.name).first()
         if db_user:
@@ -318,7 +318,7 @@ class J4J_Spawner(Spawner):
 
     async def poll(self):
         uuidcode = uuid.uuid4().hex
-        self.log.info("userserver={} - Poll JupyterLab: uuidcode={}".format(self._log_name.lower(), uuidcode))
+        self.log.info("userserver={}, action=poll, uuidcode={}".format(self._log_name.lower(), uuidcode))
         db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
         if not db_spawner:
             self.log.warning("userserver={} - uuidcode={} - Poll for Spawner that does not exist in database".format(self._log_name.lower(), uuidcode))
@@ -336,7 +336,7 @@ class J4J_Spawner(Spawner):
             self.uuidcode_tmp = None
         else:
             uuidcode = uuid.uuid4().hex
-        self.log.info("userserver={} - Stop JupyterLab: uuidcode={}".format(self._log_name.lower(), uuidcode))
+        self.log.info("userserver={}, action=stop, uuidcode={}".format(self._log_name.lower(), uuidcode))
         self.progs_no = 0
         with open(self.user.authenticator.j4j_urls_paths, 'r') as f:
             urls = json.load(f)
@@ -399,7 +399,7 @@ class J4J_Spawner(Spawner):
 
     async def cancel(self, uuidcode, stopped):
         try:
-            self.log.info("userserver={} - Cancel JupyterLab: uuidcode={}".format(self._log_name.lower(), uuidcode))
+            self.log.info("userserver={}, action=cancel, uuidcode={}".format(self._log_name.lower(), uuidcode))
             if str(type(self._spawn_future)) == "<class '_asyncio.Task'>" and self._spawn_future._state in ['PENDING']:
                 self.log.debug("userserver={} - uuidcode={} Spawner is pending, try to cancel".format(self._log_name.lower(), uuidcode))
                 self.stopped = False
@@ -427,7 +427,7 @@ class J4J_Spawner(Spawner):
                 self.user.db.refresh(db_spawner)
                 if db_spawner.user_options:
                     self.user_options = db_spawner.user_options
-                    self.log.info("userserver={} - Start with options from first server_start for this spawner: {}".format(self._log_name.lower(), self.user_options))
+                    self.log.debug("userserver={} - Start with options from first server_start for this spawner: {}".format(self._log_name.lower(), self.user_options))
                     return ""
             if not self.html_code == "":
                 if self.useraccs_complete: 
@@ -447,7 +447,7 @@ class J4J_Spawner(Spawner):
             tunnel_token = get_token(self.user.authenticator.tunnel_token_path)
             user_dic, maintenance = get_maintenance(user_dic, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
-                self.log.info("userserver={} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
+                self.log.debug("userserver={} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
             reservations_var = reservations(user_dic, self.reservation_paths)
             self.html_code = create_html(user_dic, reservations_var, self.user.authenticator.resources, self.style_path, self.dockerimages_path, self.project_checkbox_path, maintenance, self.useraccs_complete)
         except Exception:
