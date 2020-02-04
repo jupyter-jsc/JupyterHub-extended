@@ -474,6 +474,7 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+        self.log.debug("uuidcode={} , First response: {}".format(uuidcode, resp_json))
 
         accesstoken = resp_json.get('access_token', None)
         refreshtoken = resp_json.get('refresh_token', None)
@@ -496,6 +497,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                           validate_cert=self.tls_verify)
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+        self.log.debug("uuidcode={} , Second response: {}".format(uuidcode, resp_json))
 
         username_key = unity[self.hdfaai_authorize_url]['username_key']
 
@@ -509,6 +511,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                               validate_cert=self.tls_verify)
         resp_exp = await http_client.fetch(req_exp)
         resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
+        self.log.debug("uuidcode={} , Third response: {}".format(uuidcode, resp_json_exp))
 
         tokeninfo_exp_key = unity[self.hdfaai_token_url].get('tokeninfo_exp_key', 'exp')
         if not resp_json_exp.get(tokeninfo_exp_key):
