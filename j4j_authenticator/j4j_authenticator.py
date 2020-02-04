@@ -519,7 +519,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             return
 
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
-        username = resp_json.get(username_key).split('=')[1]
+        username = resp_json.get(username_key)
         username = self.normalize_username(username)
         self.log.info("uuidcode={}, action=login, username={}".format(uuidcode, username))
 
