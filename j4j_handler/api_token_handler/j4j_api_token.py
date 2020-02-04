@@ -23,10 +23,10 @@ class J4J_APITokenHandler(APIHandler):
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:
-            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.log.warning("uuidcode={} - Could not validate Intern-Authorization".format(uuidcode))
             self.set_status(401)
             return
-        self.log.info("{} - GetToken for server: {}".format(uuidcode, server_name))
+        self.log.debug("uuidcode={} - GetToken for servername={}".format(uuidcode, server_name))
         user = None
         try:
             if 'Authorization' in self.request.headers.keys():
@@ -35,13 +35,13 @@ class J4J_APITokenHandler(APIHandler):
                 if found is not None:
                     user = self._user_from_orm(found.user)
         except:
-            self.log.debug("{} - Could not find user for this token: {}".format(uuidcode, self.request.headers))
+            self.log.debug("uuidcode={} - Could not find user for this token: {}".format(uuidcode, self.request.headers))
         #if not user:
         #    user = self.find_user(username)
         if user:
             self.set_header('Content-Type', 'text/plain')
             self.set_status(201)
-            self.log.debug("{} - {} - load accesstoken from database.".format(user.name, uuidcode))
+            self.log.debug("UID={} - uuidcode={} - load accesstoken from database.".format(user.name, uuidcode))
             db_user = user.db.query(User).filter(User.name == user.name).first()
             if db_user:
                 user.db.refresh(db_user)
@@ -51,7 +51,7 @@ class J4J_APITokenHandler(APIHandler):
             if self.request.headers.get('renew', 'False').lower() == 'true':
                 if int(token.get('expire')) - time.time() < 480:
                     try:
-                        self.log.debug("{} - {} - Try to update accesstoken".format(uuidcode, user.name))
+                        self.log.debug("uuidcode={} - UID={} - Try to update accesstoken".format(uuidcode, user.name))
                         with open(user.authenticator.unity_file, 'r') as f:
                             unity = json.load(f)
                         if state.get('login_handler') == 'jscldap':
@@ -76,19 +76,19 @@ class J4J_APITokenHandler(APIHandler):
                             if r.status_code == 200:
                                 accesstoken = r.json().get('access_token')
                             else:
-                                self.log.warning("{} - {} - Could not update accesstoken: {} {}".format(uuidcode, user.name, r.status_code, r.text))
+                                self.log.warning("uuidcode={} - UID={} - Could not update accesstoken: {} {}".format(uuidcode, user.name, r.status_code, r.text))
                         with closing(requests.get(info_url, headers={ 'Authorization': 'Bearer {}'.format(accesstoken) }, verify=False)) as r:
                             if r.status_code == 200:
                                 expire = r.json().get('exp')
                             else:
-                                self.log.warning("{} - {} - Could not receive token information: {} {}".format(uuidcode, user.name, r.status_code, r.text))
+                                self.log.warning("uuidcode={} - UID={} - Could not receive token information: {} {}".format(uuidcode, user.name, r.status_code, r.text))
                         state['accesstoken'] = accesstoken
                         state['expire'] = expire
                         await user.save_auth_state(state)
                         token['accesstoken'] = accesstoken
                         token['expire'] = expire
                     except:
-                        self.log.exception("{} - {} - Could not update accesstoken".format(uuidcode, user.name))
+                        self.log.exception("uuidcode={} - UID={} - Could not update accesstoken".format(uuidcode, user.name))
             if self.request.headers.get('accounts', 'False').lower() == 'true':
                 token['oauth_user'] = state.get('oauth_user')
             self.write(json.dumps(token))
@@ -103,11 +103,11 @@ class J4J_APITokenHandler(APIHandler):
         uuidcode = self.request.headers.get('uuidcode', None)
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
-        self.log.info("{} - PostToken for server: {}".format(uuidcode, server_name))
+        self.log.debug("uuidcode={} - PostToken for servername={}".format(uuidcode, server_name))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:
-            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.log.warning("uuidcode={} - Could not validate Intern-Authorization".format(uuidcode))
             self.set_status(401)
             return
         data = self.request.body.decode("utf8")
@@ -128,7 +128,7 @@ class J4J_APITokenHandler(APIHandler):
         if user:
             data_json = json.loads(data)
             try:
-                self.log.debug("{} - update accesstoken in database.".format(user.name))
+                self.log.debug("uuidcode={} - UID={} - update accesstoken in database.".format(uuidcode, user.name))
                 db_user = user.db.query(User).filter(User.name == user.name).first()
                 if db_user:
                     user.db.refresh(db_user)

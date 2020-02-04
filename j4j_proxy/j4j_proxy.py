@@ -65,7 +65,7 @@ class J4J_Proxy(ConfigurableHTTPProxy):
         # It happens that the HDFCloud JupyterLab answers, before the J4J_Proxy can find the Docker Container in the network. Because of this we wait one second (in this async function), before we add a user to the proxy. This delays the spawn for one second, but gives the Docker network time to establish the new hostname in the network.
         time.sleep(1)
         spawner = user.spawners[server_name]
-        self.log.info(
+        self.log.debug(
             "Adding user %s to proxy %s => %s",
             user.name,
             spawner.proxy_spec,
@@ -98,7 +98,7 @@ class J4J_Proxy(ConfigurableHTTPProxy):
         # log info-level that we are starting the route-checking
         # this may help diagnose performance issues,
         # as we are about
-        self.log.info("Checking routes")
+        self.log.debug("Checking routes")
         user_routes = {path for path, r in routes.items() if 'user' in r['data']}
         futures = []
 
@@ -236,7 +236,7 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                         if db_server:
                             self.db.refresh(db_server)
                         if route_user and user_dict.get(route_user) and db_server:
-                            self.log.info("Add Server to memory spawner %s", routespec)
+                            self.log.debug("Add Server to memory spawner %s", routespec)
                             user_dict.get(route_user).spawners[db_spawner.name].server = Server(orm_server=db_server)
         await gen.multi(futures)
         stop = time.perf_counter()  # timer stops here when user is deleted

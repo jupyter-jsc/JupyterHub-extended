@@ -17,11 +17,11 @@ class J4J_APIProxyHandler(APIHandler):
         uuidcode = self.request.headers.get('uuidcode', None)
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
-        self.log.info("{} - Remove proxys for server: {}".format(uuidcode, server_name))
+        self.log.debug("uuidcode={} - Remove proxys for server: {}".format(uuidcode, server_name))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:
-            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.log.warning("uuidcode={} - Could not validate Intern-Authorization".format(uuidcode))
             self.set_status(401)
             return
         user = None
@@ -37,7 +37,7 @@ class J4J_APIProxyHandler(APIHandler):
         if user:
             try:
                 db_spawner = user.db.query(Spawner).filter(Spawner.name == server_name).filter(Spawner.user_id == user.orm_user.id).first()
-                self.log.debug("{} - DB_spawner: {}".format(uuidcode, db_spawner))
+                self.log.debug("uuidcode={} - DB_spawner: {}".format(uuidcode, db_spawner))
                 if db_spawner:
                     user.db.refresh(db_spawner)
                     #self.log.debug("{} - DB_spawner_state: {}".format(uuidcode, db_spawner.state))
@@ -48,19 +48,19 @@ class J4J_APIProxyHandler(APIHandler):
                         state[key] = value
                     my_hostname = socket.gethostname()
                     state['hostname'] = my_hostname
-                    self.log.debug("{} - {} New Hostname for {}: {}".format(user.name, uuidcode, server_name, my_hostname))
+                    self.log.debug("UID={} - uuidcode={} New Hostname for {}: {}".format(user.name, uuidcode, server_name, my_hostname))
                     setattr(db_spawner, 'state', state)
                     setattr(db_spawner, 'last_activity', datetime.utcnow())
                     user.db.commit()
                     user.spawners[server_name].setup_proxys(uuidcode)
                     self.set_status(200)
                 else:
-                    self.log.warning("{} - {} There is no server with the name {} for the user in the database".format(user.name, uuidcode, server_name))
+                    self.log.warning("UID={} - uuidcode={} There is no server with the name {} for the user in the database".format(user.name, uuidcode, server_name))
                     self.set_status(404)
-                    self.write("Server with name {} for user {} not found".format(server_name, user.name))
+                    self.write("Server with name {} for user UID={} not found".format(server_name, user.name))
                     self.flush()
             except:
-                self.log.exception("{} - {} Could not remove proxy routes for the spawner: {}".format(user.name, uuidcode, server_name))
+                self.log.exception("UID={} - uuidcode={} Could not remove proxy routes for the spawner: {}".format(user.name, uuidcode, server_name))
                 self.set_status(501)
                 self.write("Could not remove proxy routes. Please look into the logs with the uuidcode: {}".format(uuidcode))
                 self.flush()
@@ -74,11 +74,11 @@ class J4J_APIProxyHandler(APIHandler):
         uuidcode = self.request.headers.get('uuidcode', None)
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
-        self.log.info("{} - Post Proxy Handler, server_name: {}".format(uuidcode, server_name))
+        self.log.debug("uuidcode={} - Post Proxy Handler, server_name: {}".format(uuidcode, server_name))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
         if self.request.headers.get('Intern-Authorization', '') != intern_token:
-            self.log.warning("{} - Could not validate Intern-Authorization".format(uuidcode))
+            self.log.warning("uuidcode={} - Could not validate Intern-Authorization".format(uuidcode))
             self.set_status(401)
             return
         self.set_header('Content-Type', 'text/plain')
@@ -96,7 +96,7 @@ class J4J_APIProxyHandler(APIHandler):
             state = {}
             db_spawner = user.db.query(Spawner).filter(Spawner.name == server_name).filter(Spawner.user_id == user.orm_user.id).first()
             if db_spawner == None:
-                self.log.warning("{} - {} There is no server with the name {} for the user in the database".format(user.name, uuidcode, server_name))
+                self.log.warning("UID={} - uuidcode={} There is no server with the name {} for the user in the database".format(user.name, uuidcode, server_name))
                 self.set_status(404)
                 self.write("Server with name {} for user {} not found".format(server_name, user.name))
                 self.flush()
@@ -106,7 +106,7 @@ class J4J_APIProxyHandler(APIHandler):
                     state[key] = value
                 my_hostname = socket.gethostname()
                 state['hostname'] = my_hostname
-                self.log.debug("{} - {} New Hostname for {}: {}".format(user.name, uuidcode, server_name, my_hostname))
+                self.log.debug("UID={} - uuidcode={} New Hostname for {}: {}".format(user.name, uuidcode, server_name, my_hostname))
                 setattr(db_spawner, 'state', state)
                 setattr(db_spawner, 'last_activity', datetime.utcnow())
                 user.db.commit()
