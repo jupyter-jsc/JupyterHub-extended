@@ -20,6 +20,29 @@ from oauthenticator.generic import GenericOAuthenticator
 from .j4j_logout import J4J_LogoutHandler
 from .utils import get_user_dic 
 
+class HDFAAICallbackHandler(OAuthCallbackHandler):
+    pass
+
+class HDFAAIEnvMixin(OAuth2Mixin):
+    _OAUTH_ACCESS_TOKEN_URL = os.environ.get('HDFAAI_TOKEN_URL', 'https://unity.helmholtz-data-federation.de/oauth2/token')
+    _OAUTH_AUTHORIZE_URL = os.environ.get('HDFAAI_AUTHORIZE_URL', 'https://unity.helmholtz-data-federation.de/oauth2-as/oauth2-authz')
+
+class HDFAAILoginHandler(OAuthLoginHandler, HDFAAIEnvMixin):
+    def get(self):
+        with open(self.authenticator.unity_file, 'r') as f:
+            unity = json.load(f)
+        redirect_uri = self.authenticator.get_callback_url(None, "HDFAAI")
+        self.log.info('OAuth redirect: %r', redirect_uri)
+        state = self.get_state()
+        self.set_state_cookie(state)
+        self.authorize_redirect(
+            redirect_uri=redirect_uri,
+            client_id=unity[self.authenticator.jscldap_token_url]['client_id'],
+            scope=unity[self.authenticator.jscldap_authorize_url]['scope'],
+            extra_params={'state': state},
+            response_type='code')
+
+
 class JSCLDAPCallbackHandler(OAuthCallbackHandler):
     pass
 
@@ -81,6 +104,25 @@ class BaseAuthenticator(GenericOAuthenticator):
         os.environ.get('MULTIPLE_INSTANCES', 'false').lower() in {'true', '1'},
         config=True,
         help="Is this JupyterHub instance running with other instances behind the same proxy with the same database?"
+    )
+
+    hdfaai_callback_url = Unicode(
+        os.getenv('HDFAAI_CALLBACK_URL', 'https://jupyter-jsc.fz-juelich.de/hub/hdfaai_callback'),
+        config=True,
+        help="""Callback URL to use.
+        Typically `https://{host}/hub/oauth_callback`"""
+    )
+
+    hdfaai_token_url = Unicode(
+        os.environ.get('HDFAAI_TOKEN_URL', 'https://unity.helmholtz-data-federation.de/oauth2/token'),
+        config=True,
+        help="Access token endpoint URL for HDFAAI"
+    )
+
+    hdfaai_authorize_url = Unicode(
+        os.environ.get('HDFAAI_AUTHORIZE_URL', 'https://unity.helmholtz-data-federation.de/oauth2-as/oauth2-authz'),
+        config=True,
+        help="Authorize URL for HDFAAI Login"
     )
 
     jscldap_callback_url = Unicode(
@@ -211,9 +253,9 @@ class BaseAuthenticator(GenericOAuthenticator):
         """,
     )
 
-    login_handler = [JSCLDAPLoginHandler, JSCUsernameLoginHandler]
+    login_handler = [JSCLDAPLoginHandler, JSCUsernameLoginHandler, HDFAAILoginHandler]
     logout_handler = J4J_LogoutHandler
-    callback_handler = [JSCLDAPCallbackHandler, JSCUsernameCallbackHandler]
+    callback_handler = [JSCLDAPCallbackHandler, JSCUsernameCallbackHandler, HDFAAICallbackHandler]
 
     def get_handlers(self, app):
         return [
@@ -221,6 +263,8 @@ class BaseAuthenticator(GenericOAuthenticator):
             (r'/jscldap_callback', self.callback_handler[0]),
             (r'/jscusername_login', self.login_handler[1]),
             (r'/jscusername_callback', self.callback_handler[1]),
+            (r'/hdfaai_login', self.login_handler[2]),
+            (r'/hdfaai_callback', self.callback_handler[2]),
             (r'/logout', self.logout_handler)
         ]
 
@@ -229,6 +273,8 @@ class BaseAuthenticator(GenericOAuthenticator):
             return self.jscldap_callback_url
         elif authenticator_name == "JSCUsername":
             return self.jscusername_callback_url
+        elif authenticator_name == "HDFAAI":
+            return self.hdfaii_callback_url
         else:
             return "<unknown_callback_url>"
 
@@ -383,9 +429,138 @@ class BaseAuthenticator(GenericOAuthenticator):
         elif (handler.__class__.__name__ == "JSCUsernameCallbackHandler"):
             self.log.debug("{} - Call JSCUsername_authenticate".format(uuidcode))
             return await self.jscusername_authenticate(handler, uuidcode, data)
+        elif (handler.__class__.__name__ == "HDFAAICallbackHandler"):
+            self.log.debug("{} - Call HDFAAI_authenticate".format(uuidcode))
+            return await self.hdfaai_authenticate(handler, uuidcode, data)
         else:
             self.log.warning("{} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
             return "Username"
+
+    async def hdfaai_authenticate(self, handler, uuidcode, data=None):
+        with open(self.unity_file, 'r') as f:
+            unity = json.load(f)
+        code = handler.get_argument("code")
+        http_client = AsyncHTTPClient()
+        params = dict(
+            redirect_uri=self.get_callback_url(None, "HDFAAI"),
+            code=code,
+            grant_type='authorization_code'
+        )
+        params.update(self.extra_params)
+
+        if self.hdfaai_token_url:
+            url = self.hdfaai_token_url
+        else:
+            raise ValueError("{} - Please set the HDFAAI_TOKEN_URL environment variable".format(uuidcode))
+
+        b64key = base64.b64encode(
+            bytes(
+                "{}:{}".format(unity[self.hdfaai_token_url]['client_id'], unity[self.hdfaai_token_url]['client_secret']),
+                "utf8"
+            )
+        )
+
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": self.j4j_user_agent,
+            "Authorization": "Basic {}".format(b64key.decode("utf8"))
+        }
+        req = HTTPRequest(url,
+                          method="POST",
+                          headers=headers,
+                          validate_cert=self.tls_verify,
+                          body=urllib.parse.urlencode(params)
+                          )
+
+        resp = await http_client.fetch(req)
+        resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+
+        accesstoken = resp_json.get('access_token', None)
+        refreshtoken = resp_json.get('refresh_token', None)
+        token_type = resp_json.get('token_type', None)
+        scope = resp_json.get('scope', '')
+        if (isinstance(scope, str)):
+            scope = scope.split(' ')
+
+        # Determine who the logged in user is
+        headers = {
+            "Accept": "application/json",
+            "User-Agent": self.j4j_user_agent,
+            "Authorization": "{} {}".format(token_type, accesstoken)
+        }
+        url = url_concat(unity[self.hdfaai_token_url]['links']['userinfo'], unity[self.hdfaai_token_url].get('userdata_params', {}))
+
+        req = HTTPRequest(url,
+                          method=unity[self.hdfaai_token_url].get('userdata_method', 'GET'),
+                          headers=headers,
+                          validate_cert=self.tls_verify)
+        resp = await http_client.fetch(req)
+        resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+
+        username_key = unity[self.hdfaai_authorize_url]['username_key']
+
+        if not resp_json.get(username_key):
+            self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
+            return
+
+        req_exp = HTTPRequest(unity[self.hdfaai_token_url]['links']['tokeninfo'],
+                              method=unity[self.hdfaai_token_url].get('tokeninfo_method', 'GET'),
+                              headers=headers,
+                              validate_cert=self.tls_verify)
+        resp_exp = await http_client.fetch(req_exp)
+        resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
+
+        tokeninfo_exp_key = unity[self.hdfaai_token_url].get('tokeninfo_exp_key', 'exp')
+        if not resp_json_exp.get(tokeninfo_exp_key):
+            self.log.error("{} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
+            return
+
+        expire = str(resp_json_exp.get(tokeninfo_exp_key))
+        username = resp_json.get(username_key).split('=')[1]
+        username = self.normalize_username(username)
+        self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
+        self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
+        try:
+            with open(self.j4j_urls_paths, 'r') as f:
+                j4j_paths = json.load(f)
+            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
+                orchestrator_token = f.read().rstrip()
+            json_dic = { 'accesstoken': accesstoken,
+                         'refreshtoken': refreshtoken }
+            header = {'Intern-Authorization': orchestrator_token,
+                      'uuidcode': uuidcode,
+                      'stopall': 'false',
+                      'username': username,
+                      'expire': expire,
+                      'tokenurl': self.hdfaai_token_url,
+                      'authorizeurl': self.hdfaai_token_url,
+                      'allbutthese': 'true' }
+            url = j4j_paths.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
+            with closing(requests.post(url,
+                                      headers=header,
+                                      json=json_dic,
+                                      verify=False)) as r:
+                if r.status_code != 202:
+                    self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
+        except:
+            self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
+
+
+        return {
+                'name': username,
+                'auth_state': {
+                               'accesstoken': accesstoken,
+                               'refreshtoken': refreshtoken,
+                               'expire': expire,
+                               'oauth_user': resp_json,
+                               'user_dic': {},
+                               'useraccs_complete': True,
+                               'scope': scope,
+                               'login_handler': 'hdfaai',
+                               'errormsg': ''
+                               }
+                }
+
 
     async def jscldap_authenticate(self, handler, uuidcode, data=None):
         with open(self.unity_file, 'r') as f:
