@@ -430,7 +430,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             self.log.debug("uuidcode={} - Call JSCUsername_authenticate".format(uuidcode))
             return await self.jscusername_authenticate(handler, uuidcode, data)
         elif (handler.__class__.__name__ == "HDFAAICallbackHandler"):
-            self.log.debug("{} - Call HDFAAI_authenticate".format(uuidcode))
+            self.log.debug("uuidcode={} - Call HDFAAI_authenticate".format(uuidcode))
             return await self.hdfaai_authenticate(handler, uuidcode, data)
         else:
             self.log.warning("uuidcode={} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
@@ -500,7 +500,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         username_key = unity[self.hdfaai_authorize_url]['username_key']
 
         if not resp_json.get(username_key):
-            self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
+            self.log.error("uuidcode={} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
             return
 
         req_exp = HTTPRequest(unity[self.hdfaai_token_url]['links']['tokeninfo'],
@@ -512,39 +512,13 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         tokeninfo_exp_key = unity[self.hdfaai_token_url].get('tokeninfo_exp_key', 'exp')
         if not resp_json_exp.get(tokeninfo_exp_key):
-            self.log.error("{} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
+            self.log.error("uuidcode={} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
             return
 
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key).split('=')[1]
         username = self.normalize_username(username)
-        self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
-        self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
-        try:
-            with open(self.j4j_urls_paths, 'r') as f:
-                j4j_paths = json.load(f)
-            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
-                orchestrator_token = f.read().rstrip()
-            json_dic = { 'accesstoken': accesstoken,
-                         'refreshtoken': refreshtoken }
-            header = {'Intern-Authorization': orchestrator_token,
-                      'uuidcode': uuidcode,
-                      'stopall': 'false',
-                      'username': username,
-                      'expire': expire,
-                      'tokenurl': self.hdfaai_token_url,
-                      'authorizeurl': self.hdfaai_token_url,
-                      'allbutthese': 'true' }
-            url = j4j_paths.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
-            with closing(requests.post(url,
-                                      headers=header,
-                                      json=json_dic,
-                                      verify=False)) as r:
-                if r.status_code != 202:
-                    self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
-        except:
-            self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
-
+        self.log.info("uuidcode={}, action=login, username={}".format(uuidcode, username))
 
         return {
                 'name': username,
