@@ -37,8 +37,8 @@ class HDFAAILoginHandler(OAuthLoginHandler, HDFAAIEnvMixin):
         self.set_state_cookie(state)
         self.authorize_redirect(
             redirect_uri=redirect_uri,
-            client_id=unity[self.authenticator.jscldap_token_url]['client_id'],
-            scope=unity[self.authenticator.jscldap_authorize_url]['scope'],
+            client_id=unity[self.authenticator.hdfaai_token_url]['client_id'],
+            scope=unity[self.authenticator.hdfaai_authorize_url]['scope'],
             extra_params={'state': state},
             response_type='code')
 
