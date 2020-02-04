@@ -274,7 +274,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         elif authenticator_name == "JSCUsername":
             return self.jscusername_callback_url
         elif authenticator_name == "HDFAAI":
-            return self.hdfaii_callback_url
+            return self.hdfaai_callback_url
         else:
             return "<unknown_callback_url>"
 
