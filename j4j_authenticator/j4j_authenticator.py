@@ -300,7 +300,8 @@ class BaseAuthenticator(GenericOAuthenticator):
         db_user = user.db.query(orm.User).filter(orm.User.name == user.name).first()
         user.db.refresh(db_user)
         db_spawner_all = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).all()
-        user_dic = await user.get_auth_state().get('user_dic', {})
+        user_state = await user.get_auth_state()
+        user_dic = user_state.get('user_dic', {})
         spawner = {}
         name_list = []
         for db_spawner in db_spawner_all:
