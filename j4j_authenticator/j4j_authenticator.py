@@ -300,6 +300,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         db_user = user.db.query(orm.User).filter(orm.User.name == user.name).first()
         user.db.refresh(db_user)
         db_spawner_all = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).all()
+        user_dic = await user.get_auth_state().get('user_dic', {})
         spawner = {}
         name_list = []
         for db_spawner in db_spawner_all:
@@ -317,7 +318,10 @@ class BaseAuthenticator(GenericOAuthenticator):
                 #self.log.debug("{} - Spawner {} is not active (has no server_id)".format(user.name, db_spawner.name))
                 spawner[db_spawner.name]['active'] = False
             if db_spawner.user_options and 'system' in db_spawner.user_options.keys():
-                spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() or db_spawner.user_options.get('system').upper() == 'DOCKER'
+                if db_spawner.user_options.get('system').upper() not in user_dic.keys():
+                    spawner[db_spawner.name]['spawnable'] = False
+                else:
+                    spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() or db_spawner.user_options.get('system').upper() == 'DOCKER'
             else:
                 spawner[db_spawner.name]['spawnable'] = True
             spawner[db_spawner.name]['state'] = db_spawner.state
