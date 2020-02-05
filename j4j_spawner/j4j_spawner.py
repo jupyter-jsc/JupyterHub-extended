@@ -222,6 +222,8 @@ class J4J_Spawner(Spawner):
         if 'system' not in self.user_options:
             # This errors occures, if you are able to trigger this function, without having your uids loaded first (Example: Open Home, load users, restart Hub, press Spawn)
             raise Exception("Not allowed")
+        if ':' not in self._log_name.lower():
+            raise Exception("Not allowed")
 
         # Create uuidcode to track this specific Call through the webservices
         uuidcode = uuid.uuid4().hex
