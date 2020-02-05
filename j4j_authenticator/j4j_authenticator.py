@@ -319,10 +319,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 #self.log.debug("{} - Spawner {} is not active (has no server_id)".format(user.name, db_spawner.name))
                 spawner[db_spawner.name]['active'] = False
             if db_spawner.user_options and 'system' in db_spawner.user_options.keys():
-                if db_spawner.user_options.get('system').upper() not in user_dic.keys():
-                    spawner[db_spawner.name]['spawnable'] = False
-                else:
-                    spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() or db_spawner.user_options.get('system').upper() == 'DOCKER'
+                spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() or db_spawner.user_options.get('system').upper() == 'DOCKER'
             else:
                 spawner[db_spawner.name]['spawnable'] = True
             spawner[db_spawner.name]['state'] = db_spawner.state
