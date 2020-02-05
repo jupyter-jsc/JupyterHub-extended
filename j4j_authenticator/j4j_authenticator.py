@@ -321,7 +321,8 @@ class BaseAuthenticator(GenericOAuthenticator):
             if db_spawner.user_options and 'system' in db_spawner.user_options.keys():
                 if db_spawner.user_options.get('system').upper() == 'DOCKER':
                     spawner[db_spawner.name]['spawnable'] = True
-                spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
+                else:
+                    spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
             else:
                 spawner[db_spawner.name]['spawnable'] = True
             spawner[db_spawner.name]['state'] = db_spawner.state
