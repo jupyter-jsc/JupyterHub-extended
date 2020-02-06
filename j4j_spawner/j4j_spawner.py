@@ -270,6 +270,13 @@ class J4J_Spawner(Spawner):
         self.resources =  ' '.join(["{}: {}".format(k,v) if k != "Runtime" else "{}: {}".format(k,int(v/60)) for k,v in self.user_options.get('Resources', {}).items()])
         self.reservation = self.user_options.get('reservation', '')
         self.starttimesec = int(time.time())
+        # set http_timeout
+        if self.user_options.get('system', 'docker').lower() == 'docker' or self.user_options.get('partition', 'LoginNode') == 'LoginNode':
+            self.http_timeout = 240
+        else:
+            self.http_timeout = 12*60*60
+        self.log.debug("uuidcode={} Set http_timeout to {}".format(uuidcode, self.http_timeout))
+
         env = self.get_env()
         self.log.debug("uuidcode={} - Environment: {}".format(uuidcode, env))
         if env['JUPYTERHUB_API_TOKEN'] == "":
