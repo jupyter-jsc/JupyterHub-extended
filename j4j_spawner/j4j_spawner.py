@@ -58,6 +58,7 @@ class J4J_Spawner(Spawner):
     account = ""
     partition = ""
     resources = ""
+    reservation = ""
 
     def clear_state(self):
         """clear any state (called after shutdown)"""
@@ -89,6 +90,7 @@ class J4J_Spawner(Spawner):
             self.account = state.get('account', "")
             self.partition = state.get('partition', "")
             self.resources = state.get('resources', "")
+            self.reservation = state.get('reservation', "")
         else:
             self.job_status = None
             self.db_progs_no = -1
@@ -102,6 +104,7 @@ class J4J_Spawner(Spawner):
             self.account = ""
             self.partition = ""
             self.resources = ""
+            self.reservation = ""
 
     def get_state(self):
         """get the current state"""
@@ -118,6 +121,7 @@ class J4J_Spawner(Spawner):
         state['account'] = self.account
         state['partition'] = self.partition
         state['resources'] = self.resources
+        state['reservation'] = self.reservation
         return state
 
     @property
@@ -247,6 +251,7 @@ class J4J_Spawner(Spawner):
         self.account = self.user_options.get('account', '')
         self.partition = self.user_options.get('partition', '')
         self.resources =  ' '.join(["{}: {}".format(k,v) if k != "Runtime" else "{}: {}".format(k,int(v/60)) for k,v in self.user_options.get('Resources', {}).items()])
+        self.reservation = self.user_options.get('reservation', '')
         env = self.get_env()
         self.log.debug("uuidcode={} - Environment: {}".format(uuidcode, env))
         if env['JUPYTERHUB_API_TOKEN'] == "":
