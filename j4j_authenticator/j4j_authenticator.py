@@ -662,7 +662,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         if len(hpc_infos) == 0:
             try:
                 self.log.debug("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
-                hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
+                hpc_infos = self.get_hpc_infos_via_ssh()
                 self.log.debug("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
             except:
                 self.log.exception("uuidcode={} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
@@ -809,7 +809,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             if pattern.match(username):
                 try:
                     self.log.debug("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
-                    hpc_infos = self.user.authenticator.get_hpc_infos_via_ssh()
+                    hpc_infos = self.get_hpc_infos_via_ssh()
                     self.log.debug("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
                 except:
                     self.log.exception("uuidcode={} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
