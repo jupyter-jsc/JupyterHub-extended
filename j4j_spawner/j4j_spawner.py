@@ -61,7 +61,7 @@ class J4J_Spawner(Spawner):
     resources = ""
     reservation = ""
     starttimesec = 0
-    http_timeout = 180
+    http_timeout = 300
 
     def clear_state(self):
         """clear any state (called after shutdown)"""
@@ -77,7 +77,7 @@ class J4J_Spawner(Spawner):
         self.login_handler = ''
         self.useraccs_complete = False
         self.starttimesec = 0
-        self.http_timeout = 180
+        self.http_timeout = 300
 
     def load_state(self, state):
         """load state from the database"""
@@ -113,7 +113,7 @@ class J4J_Spawner(Spawner):
             self.resources = ""
             self.reservation = ""
             self.starttimesec = 0
-            self.http_timeout = 180
+            self.http_timeout = 300
 
     def get_state(self):
         """get the current state"""
@@ -274,7 +274,7 @@ class J4J_Spawner(Spawner):
         self.starttimesec = int(time.time())
         # set http_timeout
         if self.user_options.get('system', 'docker').lower() == 'docker' or self.user_options.get('partition', 'LoginNode') == 'LoginNode':
-            self.http_timeout = 240
+            self.http_timeout = 300
         else:
             self.http_timeout = 12*60*60
         self.log.debug("uuidcode={} Set http_timeout to {}".format(uuidcode, self.http_timeout))
@@ -526,7 +526,6 @@ class J4J_Spawner(Spawner):
         ret['account'] = form_data.get('account_input')[0]
         ret['sendmail'] = 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name='sendmail') in form_data.keys()
         if ret['system'].upper() == 'DOCKER':
-            self.http_timeout = 30
             for checkbox_name, checkbox_info in project_cb_dict.get('ALL', {}).items():
                 if checkbox_info.get('docker', 'false').lower() == 'true':
                     if 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name=checkbox_name) in form_data.keys():
@@ -549,7 +548,6 @@ class J4J_Spawner(Spawner):
                 if len(checkbox_info.get('scriptpath')) > 0:
                     ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
         if ret['partition'] == 'LoginNode':
-            self.http_timeout = 180
             return ret
         # Resources
         ret['Resources'] = {}
@@ -557,8 +555,4 @@ class J4J_Spawner(Spawner):
             s = 'system_{system}_{account}_{project}_{partition}_'.format(system=ret['system'], account=ret['account'], project=ret['project'], partition=ret['partition'])
             if key[:len(s)] == s:
                 ret['Resources'][key[len(s):-len('_name')]] = int(int(value[0])*filled_resources.get(ret['system']).get(ret['partition']).get(key[len(s):-len('_name')]).get('DIVISOR', 1))
-        try:
-            self.http_timeout = int(24*60*60)
-        except:
-            self.http_timeout = 240
         return ret
