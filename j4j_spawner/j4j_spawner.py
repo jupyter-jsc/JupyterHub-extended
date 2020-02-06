@@ -8,10 +8,11 @@ import requests
 import uuid
 import json
 import socket
+import time
+import datetime
 
 from traitlets import Unicode, Dict
 from asyncio import sleep
-from datetime import datetime
 from contextlib import closing
 
 from async_generator import async_generator, yield_
@@ -43,7 +44,7 @@ class J4J_Spawner(Spawner):
                       {"progress": 20, "html_message": "Creating a <a href=\"https://www.unicore.eu\">UNICORE</a> Job." },
                       {"progress": 40, "html_message": "Submitting Job to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
                       {"progress": 60, "html_message": "Waiting until your <system>-Job is started." },
-                      {"progress": 80, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab."}
+                      {"progress": 80, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab. (Timeout at <timeout>)"}
                      ]
     progs_no = 0
     db_progs_no = -1
@@ -59,6 +60,8 @@ class J4J_Spawner(Spawner):
     partition = ""
     resources = ""
     reservation = ""
+    starttimesec = 0
+    http_timeout = 180
 
     def clear_state(self):
         """clear any state (called after shutdown)"""
@@ -73,6 +76,8 @@ class J4J_Spawner(Spawner):
         self.sendmail = False
         self.login_handler = ''
         self.useraccs_complete = False
+        self.starttimesec = 0
+        self.http_timeout = 180
 
     def load_state(self, state):
         """load state from the database"""
@@ -91,6 +96,8 @@ class J4J_Spawner(Spawner):
             self.partition = state.get('partition', "")
             self.resources = state.get('resources', "")
             self.reservation = state.get('reservation', "")
+            self.starttimesec = state.get('starttimesec', "")
+            self.http_timeout = state.get('http_timeout', "")
         else:
             self.job_status = None
             self.db_progs_no = -1
@@ -105,6 +112,8 @@ class J4J_Spawner(Spawner):
             self.partition = ""
             self.resources = ""
             self.reservation = ""
+            self.starttimesec = 0
+            self.http_timeout = 180
 
     def get_state(self):
         """get the current state"""
@@ -122,6 +131,8 @@ class J4J_Spawner(Spawner):
         state['partition'] = self.partition
         state['resources'] = self.resources
         state['reservation'] = self.reservation
+        state['starttimesec'] = self.starttimesec
+        state['http_timeout'] = self.http_timeout
         return state
 
     @property
@@ -154,6 +165,10 @@ class J4J_Spawner(Spawner):
                 if '<project>' in s['html_message']:
                     if 'project' in db_spawner.user_options:
                         s['html_message'] = s['html_message'].replace('<project>', db_spawner.user_options['project'])
+                if '<timeout>' in s['html_message']:
+                    if 'starttimesec' in db_spawner.state:
+                        timeout = db_spawner.state['starttimesec'] + self.http_timeout
+                        s['html_message'] = s['html_message'].replace('<timeout>', datetime.datetime.fromtimestamp(timeout).strftime("%H:%M:%S"))
                 await yield_(s)
                 self.progs_no += 1
             db_spawner = None
@@ -252,6 +267,7 @@ class J4J_Spawner(Spawner):
         self.partition = self.user_options.get('partition', '')
         self.resources =  ' '.join(["{}: {}".format(k,v) if k != "Runtime" else "{}: {}".format(k,int(v/60)) for k,v in self.user_options.get('Resources', {}).items()])
         self.reservation = self.user_options.get('reservation', '')
+        self.starttimesec = int(time.time())
         env = self.get_env()
         self.log.debug("uuidcode={} - Environment: {}".format(uuidcode, env))
         if env['JUPYTERHUB_API_TOKEN'] == "":
@@ -426,7 +442,7 @@ class J4J_Spawner(Spawner):
               "api_token": ''
             }
             setattr(db_spawner, 'state', new_state)
-            setattr(db_spawner, 'last_activity', datetime.utcnow())
+            setattr(db_spawner, 'last_activity', datetime.datetime.utcnow())
             self.user.db.commit()
 
     async def cancel(self, uuidcode, stopped):
