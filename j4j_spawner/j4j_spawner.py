@@ -246,7 +246,7 @@ class J4J_Spawner(Spawner):
         self.project = self.user_options.get('project', '')
         self.account = self.user_options.get('account', '')
         self.partition = self.user_options.get('partition', '')
-        self.resources =  ' '.join(["{}: {}".format(k,v) for k,v in self.user_options.get('Resources', {}).items()])
+        self.resources =  ' '.join(["{}: {}".format(k,v) if k != "Runtime" else "{}: {}".format(k,int(v/60)) for k,v in self.user_options.get('Resources', {}).items()])
         env = self.get_env()
         self.log.debug("uuidcode={} - Environment: {}".format(uuidcode, env))
         if env['JUPYTERHUB_API_TOKEN'] == "":
