@@ -53,6 +53,11 @@ class J4J_Spawner(Spawner):
     sendmail = False
     login_handler = ''
     useraccs_complete = False
+    system = ""
+    project = ""
+    account = ""
+    partition = ""
+    resources = ""
 
     def clear_state(self):
         """clear any state (called after shutdown)"""
@@ -79,6 +84,11 @@ class J4J_Spawner(Spawner):
             self.sendmail = state.get('sendmail', False)
             self.login_handler = state.get('loginhandler', '')
             self.useraccs_complete = state.get('useraccs_complete', False)
+            self.system = state.get('system', "")
+            self.project = state.get('project', "")
+            self.account = state.get('account', "")
+            self.partition = state.get('partition', "")
+            self.resources = state.get('resources', "")
         else:
             self.job_status = None
             self.db_progs_no = -1
@@ -87,6 +97,11 @@ class J4J_Spawner(Spawner):
             self.sendmail = False
             self.login_handler = ''
             self.useraccs_complete = False
+            self.system = ""
+            self.project = ""
+            self.account = ""
+            self.partition = ""
+            self.resources = ""
 
     def get_state(self):
         """get the current state"""
@@ -98,6 +113,11 @@ class J4J_Spawner(Spawner):
         state['sendmail'] = self.sendmail
         state['loginhandler'] = self.login_handler
         state['useraccs_complete'] = self.useraccs_complete
+        state['system'] = self.system
+        state['project'] = self.project
+        state['account'] = self.account
+        state['partition'] = self.partition
+        state['resources'] = self.resources
         return state
 
     @property
@@ -206,10 +226,12 @@ class J4J_Spawner(Spawner):
         if 'system' not in self.user_options:
             # This errors occures, if you are able to trigger this function, without having your uids loaded first (Example: Open Home, load users, restart Hub, press Spawn)
             raise Exception("Not allowed")
+        if ':' not in self._log_name.lower():
+            raise Exception("Not allowed")
 
         # Create uuidcode to track this specific Call through the webservices
         uuidcode = uuid.uuid4().hex
-        self.log.info("userserver={}, uuidcode={}, action=start, system={}, account={}, sendmail={}, project={}, partition={}, reservation={}, checkboxes={}, resources={}".format(self._log_name.lower(), uuidcode, self.user_options.get('system', ''), self.user_options.get('account', ''), self.user_options.get('sendmail', False), self.user_options.get('project', ''), self.user_options.get('partition', ''), self.user_options.get('reservation', ''), self.user_options.get('Checkboxes', []), self.user_options.get('Resources', {})))
+        self.log.info("userserver={}, uuidcode={}, username={}, action=start, system={}, account={}, sendmail={}, project={}, partition={}, reservation={}, checkboxes={}, resources={}".format(self._log_name.lower(), uuidcode, self.user.name, self.user_options.get('system', ''), self.user_options.get('account', ''), self.user_options.get('sendmail', False), self.user_options.get('project', ''), self.user_options.get('partition', ''), self.user_options.get('reservation', ''), self.user_options.get('Checkboxes', []), self.user_options.get('Resources', {})))
         # get a few JupyterHub variables, which we will need to create spawn_header and spawn_data
         db_user = self.user.db.query(orm.User).filter(orm.User.name == self.user.name).first()
         if db_user:
@@ -220,6 +242,11 @@ class J4J_Spawner(Spawner):
             self.handler.redirect(self.user.authenticator.logout_url(self.hub.base_url))
             raise Exception("{} - Could not find auth state. Please login again.".format(uuidcode))
 
+        self.system = self.user_options.get('system', '')
+        self.project = self.user_options.get('project', '')
+        self.account = self.user_options.get('account', '')
+        self.partition = self.user_options.get('partition', '')
+        self.resources =  ' '.join(["{}: {}".format(k,v) if k != "Runtime" else "{}: {}".format(k,int(v/60)) for k,v in self.user_options.get('Resources', {}).items()])
         env = self.get_env()
         self.log.debug("uuidcode={} - Environment: {}".format(uuidcode, env))
         if env['JUPYTERHUB_API_TOKEN'] == "":
@@ -318,7 +345,7 @@ class J4J_Spawner(Spawner):
 
     async def poll(self):
         uuidcode = uuid.uuid4().hex
-        self.log.info("userserver={}, action=poll, uuidcode={}".format(self._log_name.lower(), uuidcode))
+        self.log.info("userserver={}, action=poll, username={}, uuidcode={}".format(self._log_name.lower(), self.user.name, uuidcode))
         db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
         if not db_spawner:
             self.log.warning("userserver={} - uuidcode={} - Poll for Spawner that does not exist in database".format(self._log_name.lower(), uuidcode))
@@ -336,7 +363,7 @@ class J4J_Spawner(Spawner):
             self.uuidcode_tmp = None
         else:
             uuidcode = uuid.uuid4().hex
-        self.log.info("userserver={}, action=stop, uuidcode={}".format(self._log_name.lower(), uuidcode))
+        self.log.info("userserver={}, action=stop, username={}, uuidcode={}".format(self._log_name.lower(), self.user.name, uuidcode))
         self.progs_no = 0
         with open(self.user.authenticator.j4j_urls_paths, 'r') as f:
             urls = json.load(f)
@@ -391,7 +418,7 @@ class J4J_Spawner(Spawner):
               "job_status": None,
               "db_progs_no": -1,
               "hostname": None,
-              "api_token": '',
+              "api_token": ''
             }
             setattr(db_spawner, 'state', new_state)
             setattr(db_spawner, 'last_activity', datetime.utcnow())
@@ -399,7 +426,7 @@ class J4J_Spawner(Spawner):
 
     async def cancel(self, uuidcode, stopped):
         try:
-            self.log.info("userserver={}, action=cancel, uuidcode={}".format(self._log_name.lower(), uuidcode))
+            self.log.info("userserver={}, action=cancel, username={}, uuidcode={}".format(self._log_name.lower(), self.user.name, uuidcode))
             if str(type(self._spawn_future)) == "<class '_asyncio.Task'>" and self._spawn_future._state in ['PENDING']:
                 self.log.debug("userserver={} - uuidcode={} Spawner is pending, try to cancel".format(self._log_name.lower(), uuidcode))
                 self.stopped = False

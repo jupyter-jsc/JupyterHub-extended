@@ -37,8 +37,8 @@ class HDFAAILoginHandler(OAuthLoginHandler, HDFAAIEnvMixin):
         self.set_state_cookie(state)
         self.authorize_redirect(
             redirect_uri=redirect_uri,
-            client_id=unity[self.authenticator.jscldap_token_url]['client_id'],
-            scope=unity[self.authenticator.jscldap_authorize_url]['scope'],
+            client_id=unity[self.authenticator.hdfaai_token_url]['client_id'],
+            scope=unity[self.authenticator.hdfaai_authorize_url]['scope'],
             extra_params={'state': state},
             response_type='code')
 
@@ -274,7 +274,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         elif authenticator_name == "JSCUsername":
             return self.jscusername_callback_url
         elif authenticator_name == "HDFAAI":
-            return self.hdfaii_callback_url
+            return self.hdfaai_callback_url
         else:
             return "<unknown_callback_url>"
 
@@ -300,6 +300,8 @@ class BaseAuthenticator(GenericOAuthenticator):
         db_user = user.db.query(orm.User).filter(orm.User.name == user.name).first()
         user.db.refresh(db_user)
         db_spawner_all = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).all()
+        user_state = await user.get_auth_state()
+        user_dic = user_state.get('user_dic', {})
         spawner = {}
         name_list = []
         for db_spawner in db_spawner_all:
@@ -317,7 +319,10 @@ class BaseAuthenticator(GenericOAuthenticator):
                 #self.log.debug("{} - Spawner {} is not active (has no server_id)".format(user.name, db_spawner.name))
                 spawner[db_spawner.name]['active'] = False
             if db_spawner.user_options and 'system' in db_spawner.user_options.keys():
-                spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() or db_spawner.user_options.get('system').upper() == 'DOCKER'
+                if db_spawner.user_options.get('system').upper() == 'DOCKER':
+                    spawner[db_spawner.name]['spawnable'] = True
+                else:
+                    spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
             else:
                 spawner[db_spawner.name]['spawnable'] = True
             spawner[db_spawner.name]['state'] = db_spawner.state
@@ -430,7 +435,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             self.log.debug("uuidcode={} - Call JSCUsername_authenticate".format(uuidcode))
             return await self.jscusername_authenticate(handler, uuidcode, data)
         elif (handler.__class__.__name__ == "HDFAAICallbackHandler"):
-            self.log.debug("{} - Call HDFAAI_authenticate".format(uuidcode))
+            self.log.debug("uuidcode={} - Call HDFAAI_authenticate".format(uuidcode))
             return await self.hdfaai_authenticate(handler, uuidcode, data)
         else:
             self.log.warning("uuidcode={} - Unknown CallbackHandler: {}".format(uuidcode, handler.__class__))
@@ -474,6 +479,7 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+        self.log.debug("uuidcode={} , First response: {}".format(uuidcode, resp_json))
 
         accesstoken = resp_json.get('access_token', None)
         refreshtoken = resp_json.get('refresh_token', None)
@@ -496,11 +502,12 @@ class BaseAuthenticator(GenericOAuthenticator):
                           validate_cert=self.tls_verify)
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
+        self.log.debug("uuidcode={} , Second response: {}".format(uuidcode, resp_json))
 
         username_key = unity[self.hdfaai_authorize_url]['username_key']
 
         if not resp_json.get(username_key):
-            self.log.error("{} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
+            self.log.error("uuidcode={} - OAuth user contains no key {}: {}".format(uuidcode, username_key, self.remove_secret(resp_json)))
             return
 
         req_exp = HTTPRequest(unity[self.hdfaai_token_url]['links']['tokeninfo'],
@@ -509,42 +516,17 @@ class BaseAuthenticator(GenericOAuthenticator):
                               validate_cert=self.tls_verify)
         resp_exp = await http_client.fetch(req_exp)
         resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
+        self.log.debug("uuidcode={} , Third response: {}".format(uuidcode, resp_json_exp))
 
         tokeninfo_exp_key = unity[self.hdfaai_token_url].get('tokeninfo_exp_key', 'exp')
         if not resp_json_exp.get(tokeninfo_exp_key):
-            self.log.error("{} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
+            self.log.error("uuidcode={} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
             return
 
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
-        username = resp_json.get(username_key).split('=')[1]
+        username = resp_json.get(username_key)
         username = self.normalize_username(username)
-        self.log.info("{} - Login: {} -> {} logged in.".format(uuidcode, resp_json.get(username_key), username))
-        self.log.debug("{} - Revoke old tokens for user {}".format(uuidcode, username))
-        try:
-            with open(self.j4j_urls_paths, 'r') as f:
-                j4j_paths = json.load(f)
-            with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
-                orchestrator_token = f.read().rstrip()
-            json_dic = { 'accesstoken': accesstoken,
-                         'refreshtoken': refreshtoken }
-            header = {'Intern-Authorization': orchestrator_token,
-                      'uuidcode': uuidcode,
-                      'stopall': 'false',
-                      'username': username,
-                      'expire': expire,
-                      'tokenurl': self.hdfaai_token_url,
-                      'authorizeurl': self.hdfaai_token_url,
-                      'allbutthese': 'true' }
-            url = j4j_paths.get('orchestrator', {}).get('url_revoke', '<no_url_found>')
-            with closing(requests.post(url,
-                                      headers=header,
-                                      json=json_dic,
-                                      verify=False)) as r:
-                if r.status_code != 202:
-                    self.log.warning("{} - Failed J4J_Orchestrator communication: {} {}".format(uuidcode, r.text, r.status_code))
-        except:
-            self.log.exception("{} - Could not revoke old tokens for {}".format(uuidcode, username))
-
+        self.log.info("uuidcode={}, action=login, aai=hdfaai, username={}".format(uuidcode, username))
 
         return {
                 'name': username,
@@ -644,7 +626,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key).split('=')[1]
         username = self.normalize_username(username)
-        self.log.info("uuidcode={}, action=login, username={}".format(uuidcode, username))
+        self.log.info("uuidcode={}, action=login, aai=jscldap, username={}".format(uuidcode, username))
         self.log.debug("uuidcode={}, action=revoke, username={}".format(uuidcode, username))
         try:
             with open(self.j4j_urls_paths, 'r') as f:
@@ -791,7 +773,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key).lower()
         username = self.normalize_username(username)
-        self.log.info("uuidcode={}, action=login, username={}".format(uuidcode, username))
+        self.log.info("uuidcode={}, action=login aai=jscusername, username={}".format(uuidcode, username))
         self.log.debug("uuidcode={}, action=revoke, username={}".format(uuidcode, username))
         try:
             with open(self.j4j_urls_paths, 'r') as f:
