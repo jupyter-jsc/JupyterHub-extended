@@ -149,7 +149,9 @@ class J4J_Spawner(Spawner):
             self.user.db.refresh(db_spawner)
             self.load_state(db_spawner.state)
             if db_spawner.user_options.get('system', 'none').lower() == 'docker':
-                await yield_({'progress': 50, 'html_message': 'Start JupyterLab in a virtual Machine'})
+                if 'starttimesec' in db_spawner.state:
+                    timeout = db_spawner.state['starttimesec'] + self.http_timeout
+                await yield_({'progress': 50, 'html_message': 'Start JupyterLab in a virtual Machine. (Timeout at {})'.format(datetime.datetime.fromtimestamp(timeout).strftime("%Y-%m-%d %H:%M:%S"))})
                 return
             while self.progs_no <= self.db_progs_no:
                 s_orig = self.progs_messages_all[self.progs_no]
@@ -168,7 +170,7 @@ class J4J_Spawner(Spawner):
                 if '<timeout>' in s['html_message']:
                     if 'starttimesec' in db_spawner.state:
                         timeout = db_spawner.state['starttimesec'] + self.http_timeout
-                        s['html_message'] = s['html_message'].replace('<timeout>', datetime.datetime.fromtimestamp(timeout).strftime("%H:%M:%S"))
+                        s['html_message'] = s['html_message'].replace('<timeout>', datetime.datetime.fromtimestamp(timeout).strftime("%Y-%m-%d %H:%M:%S"))
                 await yield_(s)
                 self.progs_no += 1
             db_spawner = None
@@ -547,7 +549,7 @@ class J4J_Spawner(Spawner):
             if key[:len(s)] == s:
                 ret['Resources'][key[len(s):-len('_name')]] = int(int(value[0])*filled_resources.get(ret['system']).get(ret['partition']).get(key[len(s):-len('_name')]).get('DIVISOR', 1))
         try:
-            self.http_timeout = int(ret['Resources']['Runtime'])*60
+            self.http_timeout = int(24*60*60)
         except:
-            self.http_timeout = 180
+            self.http_timeout = 240
         return ret
