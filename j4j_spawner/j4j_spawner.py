@@ -264,6 +264,8 @@ class J4J_Spawner(Spawner):
             raise Exception("{} - Could not find auth state. Please login again.".format(uuidcode))
 
         self.system = self.user_options.get('system', '')
+        if self.system.lower() == 'docker':
+            self.system = "HDF-Cloud"
         self.project = self.user_options.get('project', '')
         self.account = self.user_options.get('account', '')
         self.partition = self.user_options.get('partition', '')
