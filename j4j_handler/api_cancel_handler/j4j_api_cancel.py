@@ -18,10 +18,10 @@ class J4J_APICancelHandler(APIHandler):
         self.log.debug("uuidcode={} - Cancel Spawn for server: {}".format(uuidcode, server_name))
         with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
             intern_token = f.read().rstrip()
-        if self.request.headers.get('Intern-Authorization', '') != intern_token:
-            self.log.warning("uuidcode={} - Could not validate Intern-Authorization".format(uuidcode))
-            self.set_status(401)
-            return
+        #if self.request.headers.get('Intern-Authorization', '') != intern_token:
+        #    self.log.warning("uuidcode={} - Could not validate Intern-Authorization".format(uuidcode))
+        #    self.set_status(401)
+        #    return
         error = self.request.headers.get('Error', None)
         user = None
         if 'Authorization' in self.request.headers.keys():
