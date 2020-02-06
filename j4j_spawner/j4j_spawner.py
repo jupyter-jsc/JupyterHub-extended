@@ -8,10 +8,11 @@ import requests
 import uuid
 import json
 import socket
+import time
+import datetime
 
 from traitlets import Unicode, Dict
 from asyncio import sleep
-from datetime import datetime
 from contextlib import closing
 
 from async_generator import async_generator, yield_
@@ -42,8 +43,8 @@ class J4J_Spawner(Spawner):
     progs_messages_all = [
                       {"progress": 20, "html_message": "Creating a <a href=\"https://www.unicore.eu\">UNICORE</a> Job." },
                       {"progress": 40, "html_message": "Submitting Job to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
-                      {"progress": 60, "html_message": "Waiting until your <system>-Job is started." },
-                      {"progress": 80, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab."}
+                      {"progress": 60, "html_message": "Waiting until your <system>-Job is started. (Timeout at <timeout>)" },
+                      {"progress": 80, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab. (Timeout at <timeout>)"}
                      ]
     progs_no = 0
     db_progs_no = -1
@@ -59,6 +60,8 @@ class J4J_Spawner(Spawner):
     partition = ""
     resources = ""
     reservation = ""
+    starttimesec = 0
+    http_timeout = 300
 
     def clear_state(self):
         """clear any state (called after shutdown)"""
@@ -73,6 +76,8 @@ class J4J_Spawner(Spawner):
         self.sendmail = False
         self.login_handler = ''
         self.useraccs_complete = False
+        self.starttimesec = 0
+        self.http_timeout = 300
 
     def load_state(self, state):
         """load state from the database"""
@@ -91,6 +96,8 @@ class J4J_Spawner(Spawner):
             self.partition = state.get('partition', "")
             self.resources = state.get('resources', "")
             self.reservation = state.get('reservation', "")
+            self.starttimesec = state.get('starttimesec', "")
+            self.http_timeout = state.get('http_timeout', "")
         else:
             self.job_status = None
             self.db_progs_no = -1
@@ -105,6 +112,8 @@ class J4J_Spawner(Spawner):
             self.partition = ""
             self.resources = ""
             self.reservation = ""
+            self.starttimesec = 0
+            self.http_timeout = 300
 
     def get_state(self):
         """get the current state"""
@@ -122,6 +131,8 @@ class J4J_Spawner(Spawner):
         state['partition'] = self.partition
         state['resources'] = self.resources
         state['reservation'] = self.reservation
+        state['starttimesec'] = self.starttimesec
+        state['http_timeout'] = self.http_timeout
         return state
 
     @property
@@ -138,7 +149,9 @@ class J4J_Spawner(Spawner):
             self.user.db.refresh(db_spawner)
             self.load_state(db_spawner.state)
             if db_spawner.user_options.get('system', 'none').lower() == 'docker':
-                await yield_({'progress': 50, 'html_message': 'Start JupyterLab in a virtual Machine'})
+                if 'starttimesec' in db_spawner.state:
+                    timeout = db_spawner.state['starttimesec'] + self.http_timeout
+                await yield_({'progress': 50, 'html_message': 'Start JupyterLab in a virtual Machine. (Timeout at {})'.format(datetime.datetime.fromtimestamp(timeout).strftime("%Y-%m-%d %H:%M:%S"))})
                 return
             while self.progs_no <= self.db_progs_no:
                 s_orig = self.progs_messages_all[self.progs_no]
@@ -154,6 +167,10 @@ class J4J_Spawner(Spawner):
                 if '<project>' in s['html_message']:
                     if 'project' in db_spawner.user_options:
                         s['html_message'] = s['html_message'].replace('<project>', db_spawner.user_options['project'])
+                if '<timeout>' in s['html_message']:
+                    if 'starttimesec' in db_spawner.state:
+                        timeout = db_spawner.state['starttimesec'] + self.http_timeout
+                        s['html_message'] = s['html_message'].replace('<timeout>', datetime.datetime.fromtimestamp(timeout).strftime("%Y-%m-%d %H:%M:%S"))
                 await yield_(s)
                 self.progs_no += 1
             db_spawner = None
@@ -247,11 +264,21 @@ class J4J_Spawner(Spawner):
             raise Exception("{} - Could not find auth state. Please login again.".format(uuidcode))
 
         self.system = self.user_options.get('system', '')
+        if self.system.lower() == 'docker':
+            self.system = "HDF-Cloud"
         self.project = self.user_options.get('project', '')
         self.account = self.user_options.get('account', '')
         self.partition = self.user_options.get('partition', '')
         self.resources =  ' '.join(["{}: {}".format(k,v) if k != "Runtime" else "{}: {}".format(k,int(v/60)) for k,v in self.user_options.get('Resources', {}).items()])
         self.reservation = self.user_options.get('reservation', '')
+        self.starttimesec = int(time.time())
+        # set http_timeout
+        if self.user_options.get('system', 'docker').lower() == 'docker' or self.user_options.get('partition', 'LoginNode') == 'LoginNode':
+            self.http_timeout = 300
+        else:
+            self.http_timeout = 12*60*60
+        self.log.debug("uuidcode={} Set http_timeout to {}".format(uuidcode, self.http_timeout))
+
         env = self.get_env()
         self.log.debug("uuidcode={} - Environment: {}".format(uuidcode, env))
         if env['JUPYTERHUB_API_TOKEN'] == "":
@@ -426,7 +453,7 @@ class J4J_Spawner(Spawner):
               "api_token": ''
             }
             setattr(db_spawner, 'state', new_state)
-            setattr(db_spawner, 'last_activity', datetime.utcnow())
+            setattr(db_spawner, 'last_activity', datetime.datetime.utcnow())
             self.user.db.commit()
 
     async def cancel(self, uuidcode, stopped):
@@ -499,7 +526,6 @@ class J4J_Spawner(Spawner):
         ret['account'] = form_data.get('account_input')[0]
         ret['sendmail'] = 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name='sendmail') in form_data.keys()
         if ret['system'].upper() == 'DOCKER':
-            self.http_timeout = 30
             for checkbox_name, checkbox_info in project_cb_dict.get('ALL', {}).items():
                 if checkbox_info.get('docker', 'false').lower() == 'true':
                     if 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name=checkbox_name) in form_data.keys():
@@ -522,7 +548,6 @@ class J4J_Spawner(Spawner):
                 if len(checkbox_info.get('scriptpath')) > 0:
                     ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
         if ret['partition'] == 'LoginNode':
-            self.http_timeout = 180
             return ret
         # Resources
         ret['Resources'] = {}
@@ -530,8 +555,4 @@ class J4J_Spawner(Spawner):
             s = 'system_{system}_{account}_{project}_{partition}_'.format(system=ret['system'], account=ret['account'], project=ret['project'], partition=ret['partition'])
             if key[:len(s)] == s:
                 ret['Resources'][key[len(s):-len('_name')]] = int(int(value[0])*filled_resources.get(ret['system']).get(ret['partition']).get(key[len(s):-len('_name')]).get('DIVISOR', 1))
-        try:
-            self.http_timeout = int(ret['Resources']['Runtime'])*60
-        except:
-            self.http_timeout = 180
         return ret
