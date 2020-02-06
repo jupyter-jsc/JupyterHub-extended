@@ -43,7 +43,7 @@ class J4J_Spawner(Spawner):
     progs_messages_all = [
                       {"progress": 20, "html_message": "Creating a <a href=\"https://www.unicore.eu\">UNICORE</a> Job." },
                       {"progress": 40, "html_message": "Submitting Job to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
-                      {"progress": 60, "html_message": "Waiting until your <system>-Job is started." },
+                      {"progress": 60, "html_message": "Waiting until your <system>-Job is started. (Timeout at <timeout>)" },
                       {"progress": 80, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab. (Timeout at <timeout>)"}
                      ]
     progs_no = 0
