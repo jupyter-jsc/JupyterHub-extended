@@ -11,6 +11,7 @@ from subprocess import STDOUT, check_output, CalledProcessError
 from traitlets import Unicode, Bool, List
 from jupyterhub import orm
 from jupyterhub.objects import Server
+from tornado import web
 from tornado.auth import OAuth2Mixin
 from tornado.httpclient import HTTPRequest, AsyncHTTPClient
 from tornado.httputil import url_concat
@@ -104,6 +105,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         os.environ.get('MULTIPLE_INSTANCES', 'false').lower() in {'true', '1'},
         config=True,
         help="Is this JupyterHub instance running with other instances behind the same proxy with the same database?"
+    )
+
+    hdfaai_restriction_path = Unicode(
+        os.getenv('HDFAAI_RESTRICTION_PATH', '/etc/j4j/j4j_mount/j4j_hub/authenticators/hdfaai.json'),
+        config=True,
+        help="If username is in this list -> let him through."
     )
 
     hdfaai_callback_url = Unicode(
@@ -526,6 +533,10 @@ class BaseAuthenticator(GenericOAuthenticator):
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key)
         username = self.normalize_username(username)
+        with open(self.hdfaai_restriction_path, 'r') as f:
+            hdfaai_restriction = json.load(f)
+        if username not in hdfaai_restriction:
+            raise web.HTTPError(403, "You're not allowed to use this service. Please contact support.")
         self.log.info("uuidcode={}, action=login, aai=hdfaai, username={}".format(uuidcode, username))
 
         return {
