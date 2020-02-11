@@ -226,7 +226,13 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
                         html += t1
                 for resource, infos in resources.items():
                     html += html_resource(infos, system+'_'+account+'_'+project+'_'+partition+'_'+resource)
+                for project_cb_name, project_cb in project_checkbox.get(system_name, {}).items():
+                    if partition in project_cb.get('partition', []):
+                        t1, t2 = checkbox(system+'_'+account+'_'+project+'_'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
+                        html += t1
+                        script += t2
                 html += '</div>\n'
+                
             for project_cb_name, project_cb in project_checkbox.get(system_name, {}).items():
                 if project in project_cb.get('projects', []):
                     t1, t2 = checkbox(system+'_'+account+'_'+project+'_'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
