@@ -330,7 +330,7 @@ class BaseAuthenticator(GenericOAuthenticator):
 
     async def update_mem(self, user, caller):
         try:
-            self.log.debug("{} - Update memory of spawner. Called by: {}".format(user.name, caller))
+            #self.log.debug("{} - Update memory of spawner. Called by: {}".format(user.name, caller))
             with open(self.j4j_urls_paths, 'r') as f:
                 j4j_paths = json.load(f)
             with open(j4j_paths.get('hub', {}).get('path_partitions', '<no_path_found>'), 'r') as f:
