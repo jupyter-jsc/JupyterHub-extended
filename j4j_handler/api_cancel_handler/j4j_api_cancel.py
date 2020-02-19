@@ -5,10 +5,9 @@ Created on May 10, 2019
 '''
 
 import uuid
-import os
 
 from jupyterhub.apihandlers.base import APIHandler
-from jupyterhub.orm import APIToken, Spawner, User
+from jupyterhub.orm import APIToken, Spawner
 
 class J4J_APICancelHandler(APIHandler):
     async def delete(self, username, server_name=''):
@@ -16,13 +15,13 @@ class J4J_APICancelHandler(APIHandler):
         if not uuidcode:
             uuidcode = uuid.uuid4().hex
         self.log.debug("uuidcode={} - Cancel Spawn for server: {}".format(uuidcode, server_name))
-        with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
-            intern_token = f.read().rstrip()
+        #with open(os.environ.get('HUB_TOKEN_PATH', ''), 'r') as f:
+        #    intern_token = f.read().rstrip()
         #if self.request.headers.get('Intern-Authorization', '') != intern_token:
         #    self.log.warning("uuidcode={} - Could not validate Intern-Authorization".format(uuidcode))
         #    self.set_status(401)
         #    return
-        error = self.request.headers.get('Error', None)
+        error = self.request.headers.get('Error', False)
         user = None
         if 'Authorization' in self.request.headers.keys():
             s = self.request.headers.get('Authorization').split()
@@ -40,16 +39,7 @@ class J4J_APICancelHandler(APIHandler):
                     user.db.refresh(db_spawner)
                     user.spawners[server_name].load_state(db_spawner.state)
                 if error:
-                    db_user = user.db.query(User).filter(User.name == user.name).first()
-                    if db_user:
-                        user.db.refresh(db_user)
-                        user.encrypted_auth_state = db_user.encrypted_auth_state
-                    state = await user.get_auth_state()
-                    new_state = {}
-                    for key, value in state.items():
-                        new_state[key] = value
-                    new_state['errormsg'] = error
-                    await user.save_auth_state(new_state)
+                    user.spawners[server_name].error_message = error
                 await user.spawners[server_name].cancel(uuidcode, self.request.headers.get('Stopped', 'false').lower() == 'true')
                 self.set_status(202)
             except:

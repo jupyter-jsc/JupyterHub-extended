@@ -54,6 +54,7 @@ class J4J_Spawner(Spawner):
     sendmail = False
     login_handler = ''
     useraccs_complete = False
+    error_message = ""
     system = ""
     project = ""
     account = ""
