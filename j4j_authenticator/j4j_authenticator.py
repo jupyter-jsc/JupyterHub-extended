@@ -299,129 +299,135 @@ class BaseAuthenticator(GenericOAuthenticator):
         return secret_dict
 
     async def update_mem(self, user, caller):
-        self.log.debug("{} - Update memory of spawner. Called by: {}".format(user.name, caller))
-        with open(self.j4j_urls_paths, 'r') as f:
-            j4j_paths = json.load(f)
-        with open(j4j_paths.get('hub', {}).get('path_partitions', '<no_path_found>'), 'r') as f:
-            resources_filled = json.load(f)
-        db_user = user.db.query(orm.User).filter(orm.User.name == user.name).first()
-        user.db.refresh(db_user)
-        db_spawner_all = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).all()
-        user_state = await user.get_auth_state()
-        user_dic = user_state.get('user_dic', {})
-        spawner = {}
-        name_list = []
-        for db_spawner in db_spawner_all:
-            name_list.append(db_spawner.name)
-            if db_spawner.name == '':
-                continue
-            user.db.refresh(db_spawner)
-            spawner[db_spawner.name] = {}
-            #self.log.debug("{} - Check Spawner {}".format(user.name, db_spawner.name))
-            if db_spawner.server_id:
-                #self.log.debug("{} - Spawner {} is active (has a server_id)".format(user.name, db_spawner.name))
-                spawner[db_spawner.name]['active'] = True
-                spawner[db_spawner.name]['server_id'] = db_spawner.server_id
+        try:
+            self.log.debug("{} - Update memory of spawner. Called by: {}".format(user.name, caller))
+            with open(self.j4j_urls_paths, 'r') as f:
+                j4j_paths = json.load(f)
+            with open(j4j_paths.get('hub', {}).get('path_partitions', '<no_path_found>'), 'r') as f:
+                resources_filled = json.load(f)
+            db_user = user.db.query(orm.User).filter(orm.User.name == user.name).first()
+            user.db.refresh(db_user)
+            db_spawner_all = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == db_user.id).all()
+            user_state = await user.get_auth_state()
+            if user_state:
+                user_dic = user_state.get('user_dic', {})
             else:
-                #self.log.debug("{} - Spawner {} is not active (has no server_id)".format(user.name, db_spawner.name))
-                spawner[db_spawner.name]['active'] = False
-            if db_spawner.user_options and 'system' in db_spawner.user_options.keys():
-                if db_spawner.user_options.get('system').upper() == 'DOCKER':
-                    spawner[db_spawner.name]['spawnable'] = True
-                else:
-                    spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
-            else:
-                spawner[db_spawner.name]['spawnable'] = True
-            spawner[db_spawner.name]['state'] = db_spawner.state
-            #self.log.debug("{} - Spawner {} spawnable: {}".format(user.name, db_spawner.name, spawner[db_spawner.name]['spawnable']))
-        to_pop_list = []
-        to_add_list = []
-        for name in user.spawners.keys():
-            if name not in name_list:
-                to_pop_list.append(name)
-        for name in sorted(user.orm_user.orm_spawners.keys()):
-            if name == '':
-                continue
-            if name not in user.spawners.keys():
-                #self.log.debug("{} - Create wrapper for {}".format(user.name, name))
-                user.spawners[name] = user._new_spawner(name)
-            # get wrapper if it exists (server may be active)
-            user.spawners[name].load_state(spawner[name]['state'])
-            # has the spawner_id changed? If so -> recreate in memory
+                return
+            spawner = {}
+            name_list = []
             for db_spawner in db_spawner_all:
-                if db_spawner.name == name:
-                    try:
-                        unused_tmp = user.spawners[name].orm_spawner.id # If this throws an exception we have to replace the spawner in memory
-                        #self.log.debug("{} - {} : Mem_spawner_id: {}".format(user.name, name, user.spawners[name].orm_spawner.id))
-                    except:
-                        #self.log.debug("{} - {}: It's not there anymore".format(user.name, name))
-                        user.spawners.pop(name, None)
-                        #self.log.debug("{} - {}: Add new one in memory".format(user.name, name))
-                        user.spawners[name] = user._new_spawner(name)
-                        user.spawners[name].spawnable = spawner[name]['spawnable']
-                        user.orm_user.orm_spawners.get(name).spawnable = spawner[name]['spawnable']
-                        self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
-            if user.spawners[name].active:
-                #self.log.debug("{} - Spawner {} is in memory and active".format(user.name, name))
-                if not spawner[name]['active']:
-                    uuidcode = uuid.uuid4().hex
-                    self.log.debug("{} - Spawner servername={} should not be active. Delete it: uuidcode={}".format(user.name, name, uuidcode))
-                    try:
-                        await user.spawners[name].cancel(uuidcode, True)
-                    except:
-                        self.log.warning("uuidcode={} - Could not cancel server. Try to stop it".format(uuidcode))
-                        try:
-                            await user.stop(name)
-                        except:
-                            self.log.warning("uuidcode={} - Could not stop server. Try to delete it".format(uuidcode))
-                            try:
-                                del user.spawners[name]
-                            except:
-                                self.log.warning("uuidcode={} - Could not delete from dict".format(uuidcode))
+                name_list.append(db_spawner.name)
+                if db_spawner.name == '':
+                    continue
+                user.db.refresh(db_spawner)
+                spawner[db_spawner.name] = {}
+                #self.log.debug("{} - Check Spawner {}".format(user.name, db_spawner.name))
+                if db_spawner.server_id:
+                    #self.log.debug("{} - Spawner {} is active (has a server_id)".format(user.name, db_spawner.name))
+                    spawner[db_spawner.name]['active'] = True
+                    spawner[db_spawner.name]['server_id'] = db_spawner.server_id
                 else:
-                    #self.log.debug("{} - Spawner {} should be active. Check server_url and port".format(user.name, name))
-                    db_server = user.db.query(orm.Server).filter(orm.Server.id == spawner[name]['server_id']).first()
-                    user.db.refresh(db_server)
-                    if db_server.base_url != user.spawners[name].server.base_url or db_server.port != user.spawners[name].server.port:
-                        #self.log.debug("Bind_URLs from server {} are different between Database {} and memory {}. Trust the database and delete the own server".format(name, db_server, user.spawners[name].server))
-                        old_server = user.db.query(orm.Server).filter(orm.Server.id == user.spawners[name].orm_spawner.server_id).first()
-                        if old_server:
-                            #self.log.debug("Delete old server {} from database".format(old_server))
-                            user.db.expunge(old_server)
+                    #self.log.debug("{} - Spawner {} is not active (has no server_id)".format(user.name, db_spawner.name))
+                    spawner[db_spawner.name]['active'] = False
+                if db_spawner.user_options and 'system' in db_spawner.user_options.keys():
+                    if db_spawner.user_options.get('system').upper() == 'DOCKER':
+                        spawner[db_spawner.name]['spawnable'] = True
+                    else:
+                        spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
+                else:
+                    spawner[db_spawner.name]['spawnable'] = True
+                spawner[db_spawner.name]['state'] = db_spawner.state
+                #self.log.debug("{} - Spawner {} spawnable: {}".format(user.name, db_spawner.name, spawner[db_spawner.name]['spawnable']))
+            to_pop_list = []
+            to_add_list = []
+            for name in user.spawners.keys():
+                if name not in name_list:
+                    to_pop_list.append(name)
+            for name in sorted(user.orm_user.orm_spawners.keys()):
+                if name == '':
+                    continue
+                if name not in user.spawners.keys():
+                    #self.log.debug("{} - Create wrapper for {}".format(user.name, name))
+                    user.spawners[name] = user._new_spawner(name)
+                # get wrapper if it exists (server may be active)
+                user.spawners[name].load_state(spawner[name]['state'])
+                # has the spawner_id changed? If so -> recreate in memory
+                for db_spawner in db_spawner_all:
+                    if db_spawner.name == name:
+                        try:
+                            unused_tmp = user.spawners[name].orm_spawner.id # If this throws an exception we have to replace the spawner in memory
+                            #self.log.debug("{} - {} : Mem_spawner_id: {}".format(user.name, name, user.spawners[name].orm_spawner.id))
+                        except:
+                            #self.log.debug("{} - {}: It's not there anymore".format(user.name, name))
+                            user.spawners.pop(name, None)
+                            #self.log.debug("{} - {}: Add new one in memory".format(user.name, name))
+                            user.spawners[name] = user._new_spawner(name)
+                            user.spawners[name].spawnable = spawner[name]['spawnable']
+                            user.orm_user.orm_spawners.get(name).spawnable = spawner[name]['spawnable']
+                            self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
+                if user.spawners[name].active:
+                    #self.log.debug("{} - Spawner {} is in memory and active".format(user.name, name))
+                    if not spawner[name]['active']:
+                        uuidcode = uuid.uuid4().hex
+                        self.log.debug("{} - Spawner servername={} should not be active. Delete it: uuidcode={}".format(user.name, name, uuidcode))
+                        try:
+                            await user.spawners[name].cancel(uuidcode, True)
+                        except:
+                            self.log.warning("uuidcode={} - Could not cancel server. Try to stop it".format(uuidcode))
+                            try:
+                                await user.stop(name)
+                            except:
+                                self.log.warning("uuidcode={} - Could not stop server. Try to delete it".format(uuidcode))
+                                try:
+                                    del user.spawners[name]
+                                except:
+                                    self.log.warning("uuidcode={} - Could not delete from dict".format(uuidcode))
+                    else:
+                        #self.log.debug("{} - Spawner {} should be active. Check server_url and port".format(user.name, name))
+                        db_server = user.db.query(orm.Server).filter(orm.Server.id == spawner[name]['server_id']).first()
+                        user.db.refresh(db_server)
+                        if db_server.base_url != user.spawners[name].server.base_url or db_server.port != user.spawners[name].server.port:
+                            #self.log.debug("Bind_URLs from server {} are different between Database {} and memory {}. Trust the database and delete the own server".format(name, db_server, user.spawners[name].server))
+                            old_server = user.db.query(orm.Server).filter(orm.Server.id == user.spawners[name].orm_spawner.server_id).first()
+                            if old_server:
+                                #self.log.debug("Delete old server {} from database".format(old_server))
+                                user.db.expunge(old_server)
+                            user.spawners[name].orm_spawner.server = None
+                            user.spawners[name].server = Server(orm_server=db_server)
+                else:
+                    if spawner[name]['active']:
+                        #self.log.debug("{} - Spawner {} should be active. So create a Server in memory for it".format(user.name, name))
+                        for db_spawner in db_spawner_all:
+                            if db_spawner.name == name:
+                                user.spawners[name].orm_spawner = db_spawner
+                        db_server = user.db.query(orm.Server).filter(orm.Server.id == spawner[name]['server_id']).first()
+                        user.db.refresh(db_server)
                         user.spawners[name].orm_spawner.server = None
                         user.spawners[name].server = Server(orm_server=db_server)
-            else:
-                if spawner[name]['active']:
-                    #self.log.debug("{} - Spawner {} should be active. So create a Server in memory for it".format(user.name, name))
-                    for db_spawner in db_spawner_all:
-                        if db_spawner.name == name:
-                            user.spawners[name].orm_spawner = db_spawner
-                    db_server = user.db.query(orm.Server).filter(orm.Server.id == spawner[name]['server_id']).first()
-                    user.db.refresh(db_server)
-                    user.spawners[name].orm_spawner.server = None
-                    user.spawners[name].server = Server(orm_server=db_server)
-                    #self.log.debug("{} - Spawner {} active is now: {}".format(user.name, name, user.spawners[name].active))
-                #else:
-                #    self.log.debug("{} - Spawner {} should not be active. Everything's fine".format(user.name, name))
-                if self.spawnable_dic.get(user.name) == None:
-                    self.spawnable_dic[user.name] = {}
-                user.spawners[name].spawnable = spawner[name]['spawnable']
-                user.orm_user.orm_spawners.get(name).spawnable = spawner[name]['spawnable']
-                self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
-        if len(to_pop_list) > 0:
-            for name in to_pop_list:
-                #self.log.debug("{} - Remove {} from memory".format(user.name, name))
-                user.spawners.pop(name, None)
-        #if len(to_add_list) > 0:
-        #    for name in to_add_list:
-        #        self.log.debug("{} - Add {} to memory".format(user.name, name))
-        #        user.spawners[name] = user._new_spawner(name)
-        #        user.spawners[name].spawnable = spawner[name]['spawnable']
-        #        user.orm_user.orm_spawners.get(name).spawnable = spawner[name]['spawnable']
-        #        self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
-        for dirty_obj in user.db.dirty:
-            self.log.debug("{} - Refresh {}".format(user.name, dirty_obj))
-            self.db.refresh(dirty_obj)
+                        #self.log.debug("{} - Spawner {} active is now: {}".format(user.name, name, user.spawners[name].active))
+                    #else:
+                    #    self.log.debug("{} - Spawner {} should not be active. Everything's fine".format(user.name, name))
+                    if self.spawnable_dic.get(user.name) == None:
+                        self.spawnable_dic[user.name] = {}
+                    user.spawners[name].spawnable = spawner[name]['spawnable']
+                    user.orm_user.orm_spawners.get(name).spawnable = spawner[name]['spawnable']
+                    self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
+            if len(to_pop_list) > 0:
+                for name in to_pop_list:
+                    #self.log.debug("{} - Remove {} from memory".format(user.name, name))
+                    user.spawners.pop(name, None)
+            #if len(to_add_list) > 0:
+            #    for name in to_add_list:
+            #        self.log.debug("{} - Add {} to memory".format(user.name, name))
+            #        user.spawners[name] = user._new_spawner(name)
+            #        user.spawners[name].spawnable = spawner[name]['spawnable']
+            #        user.orm_user.orm_spawners.get(name).spawnable = spawner[name]['spawnable']
+            #        self.spawnable_dic[user.name][name] = spawner[name]['spawnable']
+            for dirty_obj in user.db.dirty:
+                self.log.debug("{} - Refresh {}".format(user.name, dirty_obj))
+                self.db.refresh(dirty_obj)
+        except:
+            self.log.exception("{} - Could not update memory.".format(caller))
 
     spawnable_dic = {}
     def spawnable(self, user_name, server_name):
