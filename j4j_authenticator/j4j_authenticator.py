@@ -20,6 +20,8 @@ from oauthenticator.generic import GenericOAuthenticator
 
 from .j4j_logout import J4J_LogoutHandler
 from .utils import get_user_dic 
+from j4j_authenticator import utils
+import time
 
 class HDFAAICallbackHandler(OAuthCallbackHandler):
     pass
@@ -239,6 +241,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         help = "Path to the J4J_Tunnel token file"
     )
 
+    reservation_path = Unicode(
+        os.environ.get("RESERVATION_PATH", ""),
+        config = True,
+        help = "Path to all reservations"
+    )
+    
     enable_auth_state = Bool(
         os.environ.get('ENABLE_AUTH_STATE', False).lower() in {'true', '1'},
         config=True,
@@ -259,6 +267,28 @@ class BaseAuthenticator(GenericOAuthenticator):
         New in JupyterHub 0.8
         """,
     )
+    
+    _reservations = {}
+    _reservation_next_update = 0
+    
+    def get_reservations(self):
+        if len(self._reservations) > 0 and self._reservation_next_update - int(time.time()) > 0:
+            return self._reservations
+        else:
+            try:
+                tmp_dic = {}
+                for system_reservation in os.listdir(self.reservation_path):
+                    system_reservation_path = os.path.join(self.reservation_path, system_reservation)
+                    system = system_reservation.split("_")[0]
+                    tmp_dic[system] = system_reservation_path
+                self._reservations = utils.reservations(tmp_dic)
+                self._reservation_next_update = int(time.time()) + 300
+                self.log.info("Updated Reservations: {}".format(self._reservations))
+                return self._reservations
+            except:
+                self._reservations = {}
+                return self._reservations
+            
 
     login_handler = [JSCLDAPLoginHandler, JSCUsernameLoginHandler, HDFAAILoginHandler]
     logout_handler = J4J_LogoutHandler
@@ -334,13 +364,18 @@ class BaseAuthenticator(GenericOAuthenticator):
                     if db_spawner.user_options.get('system').upper() == 'DOCKER':
                         spawner[db_spawner.name]['spawnable'] = True
                     else:
-                        spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
+                        if db_spawner.user_options.get('reservation', '') != '':
+                            if self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE":
+                                spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
+                            else:
+                                spawner[db_spawner.name]['spawnable'] = False
+                        else:
+                            spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
                 else:
                     spawner[db_spawner.name]['spawnable'] = True
                 spawner[db_spawner.name]['state'] = db_spawner.state
                 #self.log.debug("{} - Spawner {} spawnable: {}".format(user.name, db_spawner.name, spawner[db_spawner.name]['spawnable']))
             to_pop_list = []
-            to_add_list = []
             for name in user.spawners.keys():
                 if name not in name_list:
                     to_pop_list.append(name)
