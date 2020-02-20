@@ -111,7 +111,7 @@ def get_unity():
         unity = json.load(f)
     return unity
 
-def get_accesstoken(token_url, authorize_url):
+def get_accesstoken(logger, token_url, authorize_url):
     unity = get_unity()
     tokeninfo_url = unity[token_url].get('links', {}).get('tokeninfo')
     refreshtoken = unity[token_url].get('immune_tokens', [''])[0]
@@ -123,17 +123,26 @@ def get_accesstoken(token_url, authorize_url):
             'scope': scope}
     headers = {'Authorization': 'Basic {}'.format(b64key),
                'Accept': 'application/json'}
-    
+    logger.debug("Unity Call: {} {} {} {}".format(token_url, headers, data, cert_path))
     with closing(requests.post(token_url,
                                headers = headers,
                                data = data,
                                verify = cert_path,
                                timeout = 1800)) as r:
-        accesstoken = r.json()['access_token']
+        try:
+            accesstoken = r.json()['access_token']
+        except:
+            logger.exception("Unity Response: {} {} {}".format(r.status_code, r.text, r.headers))
+            raise Exception("Could not get access token")
+    logger.debug("Unity Call 2: {} {} {}".format(tokeninfo_url, { 'Authorization': 'Bearer {}'.format(accesstoken) }, cert_path))
     with closing(requests.get(tokeninfo_url,
                               headers = { 'Authorization': 'Bearer {}'.format(accesstoken) },
                               verify = cert_path,
                               timeout = 1800)) as r:
-        expire = r.json()['exp']
+        try:        
+            expire = r.json()['exp']
+        except:
+            logger.exception("Unity Response 2: {} {} {}".format(r.status_code, r.text, r.headers))
+            raise Exception("Could not get expire info")
     return accesstoken, refreshtoken, expire
 

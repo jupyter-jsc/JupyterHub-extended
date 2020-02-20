@@ -268,22 +268,12 @@ class J4J_Spawner(Spawner):
             try:
                 with open(self.cronjobinfopath, 'r') as f:
                     cron_job = json.load(f)
-                self.log.info(self.user.name)
-                self.log.info(cron_job.get('username', ''))
-                self.log.info(cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('servername', ''))
-                self.log.info(self._log_name.lower().split(':')[1])
-                self.log.info(cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('account', ''))
-                self.log.info(self.user_options.get('account', ''))
-                self.log.info(cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('project', ''))
-                self.log.info(self.user_options.get('project', ''))
-                self.log.info(cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('partition', ''))
-                self.log.info(self.user_options.get('partition', ''))
                 if self.user.name == cron_job.get('username', '') and \
                 cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('servername', '') == self._log_name.lower().split(':')[1] and \
                 cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('account', '') == self.user_options.get('account', '') and \
                 cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('project', '') == self.user_options.get('project', '') and \
                 cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('partition', '') == self.user_options.get('partition', ''):
-                    accesstoken, refreshtoken, expire = utils.get_accesstoken(cron_job.get('tokenurl', ''), cron_job.get('authorizeurl', ''))
+                    accesstoken, refreshtoken, expire = utils.get_accesstoken(self.log, cron_job.get('tokenurl', ''), cron_job.get('authorizeurl', ''))
                     state['accesstoken'] = accesstoken
                     state['expire'] = expire
                     state['refreshtoken'] = refreshtoken
