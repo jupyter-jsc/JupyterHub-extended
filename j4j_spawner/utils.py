@@ -5,6 +5,7 @@ import requests
 from contextlib import closing
 
 from .file_loads import get_token
+import base64
 
 def create_spawn_header(uuidcode, expire, refreshtoken, jhubtoken, accesstoken, account, project, servername, escapedusername, orchestrator_token_path, login_handler):
     spawn_header = {
@@ -105,6 +106,34 @@ def juwels_jureca_reservation(name, s, data):
                         ret['Project'][project][reservation] = infos
     return ret
 
+def get_unity():
+    with open('/etc/j4j/j4j_mount/j4j_common/unity.json', 'r') as f:
+        unity = json.load(f)
+    return unity
 
-
+def get_accesstoken(token_url, authorize_url):
+    unity = get_unity()
+    tokeninfo_url = unity[token_url].get('links', {}).get('tokeninfo')
+    refreshtoken = unity[token_url].get('immune_tokens', [''])[0]
+    cert_path = unity[token_url].get('certificate', False)
+    scope = ' '.join(unity[authorize_url].get('scope'))
+    b64key = base64.b64encode(bytes('{}:{}'.format(unity[token_url].get('client_id'), unity[token_url].get('client_secret')), 'utf-8')).decode('utf-8')
+    data = {'refresh_token': refreshtoken,
+            'grant_type': 'refresh_token',
+            'scope': scope}
+    headers = {'Authorization': 'Basic {}'.format(b64key),
+               'Accept': 'application/json'}
+    
+    with closing(requests.post(token_url,
+                               headers = headers,
+                               data = data,
+                               verify = cert_path,
+                               timeout = 1800)) as r:
+        accesstoken = r.json()['access_token']
+    with closing(requests.get(tokeninfo_url,
+                              headers = { 'Authorization': 'Bearer {}'.format(accesstoken) },
+                              verify = cert_path,
+                              timeout = 1800)) as r:
+        expire = r.json()['exp']
+    return accesstoken, refreshtoken, expire
 
