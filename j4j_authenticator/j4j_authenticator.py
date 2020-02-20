@@ -364,6 +364,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                     if db_spawner.user_options.get('system').upper() == 'DOCKER':
                         spawner[db_spawner.name]['spawnable'] = True
                     else:
+                        self.log.debug("DEBUG -- Reservation: {}".format(db_spawner.user_options.get('reservation', '')))
                         if db_spawner.user_options.get('reservation', '') != '':
                             if self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE":
                                 spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
