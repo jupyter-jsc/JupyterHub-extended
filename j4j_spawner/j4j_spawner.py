@@ -277,6 +277,7 @@ class J4J_Spawner(Spawner):
                     state['accesstoken'] = accesstoken
                     state['expire'] = expire
                     state['refreshtoken'] = refreshtoken
+                    state['loginhandler'] = "jscldap"
                     await self.user.save_auth_state(state)
                 else:
                     self.handler.redirect(self.user.authenticator.logout_url(self.hub.base_url))
