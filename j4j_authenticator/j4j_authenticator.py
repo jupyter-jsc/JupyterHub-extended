@@ -283,7 +283,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                     tmp_dic[system] = system_reservation_path
                 self._reservations = utils.reservations(tmp_dic)
                 self._reservation_next_update = int(time.time()) + 300
-                self.log.info("Updated Reservations: {}".format(self._reservations))
+                self.log.info("Updated Reservations")
                 return self._reservations
             except:
                 self._reservations = {}
