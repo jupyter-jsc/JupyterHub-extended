@@ -267,7 +267,7 @@ class J4J_Spawner(Spawner):
                     # check for cron job:
             try:
                 with open(self.cronjobinfopath, 'r') as f:
-                    cron_job = f.read()
+                    cron_job = json.load(f)
                 if self.user.name == cron_job.get('username', '') and \
                 cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('servername', '') == self._log_name.lower().split(':')[1] and \
                 cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('account', '') == self.user_options.get('account', '') and \
