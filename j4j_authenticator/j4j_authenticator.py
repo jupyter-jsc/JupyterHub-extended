@@ -35,7 +35,7 @@ class HDFAAILoginHandler(OAuthLoginHandler, HDFAAIEnvMixin):
         with open(self.authenticator.unity_file, 'r') as f:
             unity = json.load(f)
         redirect_uri = self.authenticator.get_callback_url(None, "HDFAAI")
-        self.log.info('OAuth redirect: %r', redirect_uri)
+        self.log.debug('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
         self.set_state_cookie(state)
         self.authorize_redirect(
@@ -342,7 +342,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             if user_state:
                 user_dic = user_state.get('user_dic', {})
             else:
-                self.log.info("{} - Could not get auth_state for user {}".format(caller, user.name))
+                self.log.warning("{} - Could not get auth_state for user {}".format(caller, user.name))
                 return
             spawner = {}
             name_list = []
@@ -364,22 +364,12 @@ class BaseAuthenticator(GenericOAuthenticator):
                     if db_spawner.user_options.get('system').upper() == 'DOCKER':
                         spawner[db_spawner.name]['spawnable'] = True
                     else:
-                        self.log.info("DEBUG2402 --- Name: {}".format(db_spawner.name))
-                        self.log.info("DEBUG2402 --- {}".format(db_spawner.user_options.get('reservation', 'None')))
                         if db_spawner.user_options.get('reservation', 'None') != 'None' and db_spawner.user_options.get('reservation', 'None') != '' and db_spawner.user_options.get('reservation', 'None') != None:
-                            self.log.info("DEBUG2402 --- Name: {} - If 1".format(db_spawner.name))
                             if self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE":
-                                self.log.info("DEBUG2402 --- Name: {} - If 2".format(db_spawner.name))
-                                self.log.info("DEBUG2402 --- Name: {} - If 2 - 1: {}".format(db_spawner.name, db_spawner.user_options.get('system').upper() in resources_filled.keys()))
-                                self.log.info("DEBUG2402 --- Name: {} - If 2 - 2: {}".format(db_spawner.name, db_spawner.user_options.get('system').upper() in user_dic.keys()))
                                 spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
                             else:
-                                self.log.info("DEBUG2402 --- Name: {} - Else 2".format(db_spawner.name))
                                 spawner[db_spawner.name]['spawnable'] = False
                         else:
-                            self.log.info("DEBUG2402 --- Name: {} - Else 1".format(db_spawner.name))
-                            self.log.info("DEBUG2402 --- Name: {} - Else 1 - 1: {}".format(db_spawner.name, db_spawner.user_options.get('system').upper() in resources_filled.keys()))
-                            self.log.info("DEBUG2402 --- Name: {} - Else 1 - 2: {}".format(db_spawner.name, db_spawner.user_options.get('system').upper() in user_dic.keys()))
                             spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
                 else:
                     spawner[db_spawner.name]['spawnable'] = True
@@ -538,7 +528,6 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
-        self.log.debug("uuidcode={} , First response: {}".format(uuidcode, resp_json))
 
         accesstoken = resp_json.get('access_token', None)
         refreshtoken = resp_json.get('refresh_token', None)
@@ -561,7 +550,6 @@ class BaseAuthenticator(GenericOAuthenticator):
                           validate_cert=self.tls_verify)
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
-        self.log.debug("uuidcode={} , Second response: {}".format(uuidcode, resp_json))
 
         username_key = unity[self.hdfaai_authorize_url]['username_key']
 
@@ -575,7 +563,6 @@ class BaseAuthenticator(GenericOAuthenticator):
                               validate_cert=self.tls_verify)
         resp_exp = await http_client.fetch(req_exp)
         resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
-        self.log.debug("uuidcode={} , Third response: {}".format(uuidcode, resp_json_exp))
 
         tokeninfo_exp_key = unity[self.hdfaai_token_url].get('tokeninfo_exp_key', 'exp')
         if not resp_json_exp.get(tokeninfo_exp_key):
@@ -718,7 +705,6 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
-        self.log.debug("uuidcode={} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
 
         # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
         # Since the information from Unity and ssh are identical, it makes no sense to do it if len(hpc_infos) != 0
