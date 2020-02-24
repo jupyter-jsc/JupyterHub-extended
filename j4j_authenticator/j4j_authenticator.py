@@ -366,7 +366,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                     else:
                         self.log.info("DEBUG2402 --- Name: {}".format(db_spawner.name))
                         self.log.info("DEBUG2402 --- {}".format(db_spawner.user_options.get('reservation', 'None')))
-                        if db_spawner.user_options.get('reservation', 'None') != 'None' and db_spawner.user_options.get('reservation', 'None') != '':
+                        if db_spawner.user_options.get('reservation', 'None') != 'None' and db_spawner.user_options.get('reservation', 'None') != '' and db_spawner.user_options.get('reservation', 'None') != None:
                             self.log.info("DEBUG2402 --- Name: {} - If 1".format(db_spawner.name))
                             if self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE":
                                 self.log.info("DEBUG2402 --- Name: {} - If 2".format(db_spawner.name))
