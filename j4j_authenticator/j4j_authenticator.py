@@ -364,13 +364,22 @@ class BaseAuthenticator(GenericOAuthenticator):
                     if db_spawner.user_options.get('system').upper() == 'DOCKER':
                         spawner[db_spawner.name]['spawnable'] = True
                     else:
+                        self.log.info("DEBUG2402 --- Name: {}".format(db_spawner.name))
                         self.log.info("DEBUG2402 --- {}".format(db_spawner.user_options.get('reservation', 'None')))
                         if db_spawner.user_options.get('reservation', 'None') != 'None' and db_spawner.user_options.get('reservation', 'None') != '':
+                            self.log.info("DEBUG2402 --- Name: {} - If 1".format(db_spawner.name))
                             if self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE":
+                                self.log.info("DEBUG2402 --- Name: {} - If 2".format(db_spawner.name))
+                                self.log.info("DEBUG2402 --- Name: {} - If 2 - 1: {}".format(db_spawner.name, db_spawner.user_options.get('system').upper() in resources_filled.keys()))
+                                self.log.info("DEBUG2402 --- Name: {} - If 2 - 2: {}".format(db_spawner.name, db_spawner.user_options.get('system').upper() in user_dic.keys()))
                                 spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
                             else:
+                                self.log.info("DEBUG2402 --- Name: {} - Else 2".format(db_spawner.name))
                                 spawner[db_spawner.name]['spawnable'] = False
                         else:
+                            self.log.info("DEBUG2402 --- Name: {} - Else 1".format(db_spawner.name))
+                            self.log.info("DEBUG2402 --- Name: {} - Else 1 - 1: {}".format(db_spawner.name, db_spawner.user_options.get('system').upper() in resources_filled.keys()))
+                            self.log.info("DEBUG2402 --- Name: {} - Else 1 - 2: {}".format(db_spawner.name, db_spawner.user_options.get('system').upper() in user_dic.keys()))
                             spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
                 else:
                     spawner[db_spawner.name]['spawnable'] = True
