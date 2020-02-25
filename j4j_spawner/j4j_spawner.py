@@ -38,7 +38,6 @@ class J4J_Spawner(Spawner):
     cronjobinfopath = Unicode(os.environ.get('CRONJOBINFO_PATH', ''), config=True, help='')
     dockerimages_path = Unicode(config=True, help='')
     project_checkbox_path = Unicode(config=True, help='')
-    nodes_path = Unicode(config=True, help='')
     html_code = ""
 
     # Variables for the jupyter application
@@ -528,7 +527,7 @@ class J4J_Spawner(Spawner):
             setattr(db_spawner, 'state', self.get_state())
             self.user.db.commit()
             tunnel_token = get_token(self.user.authenticator.tunnel_token_path)
-            user_dic, maintenance = get_maintenance(user_dic, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
+            user_dic, maintenance = get_maintenance(user_dic, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
                 self.log.debug("userserver={} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
             reservations_var = reservations(user_dic, self.reservation_paths)

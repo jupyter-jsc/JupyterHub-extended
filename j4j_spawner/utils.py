@@ -42,8 +42,9 @@ def create_spawn_data(servername, Environment, partition, reservation, Resources
     return spawn_data
 
 # remove not supported and not available systems
-def get_maintenance(user_accs, nodespath, urls_paths, tunnel_token):
-    with open(nodespath, 'r') as f:
+def get_maintenance(user_accs, urls_paths, tunnel_token):
+    unicorepath = os.getenv('UNICORE_INFOS', '/etc/j4j/j4j_mount/j4j_common/unicore.json')
+    with open(unicorepath, 'r') as f:
         systems = json.load(f)
     with open(urls_paths, 'r') as f:
         urls = json.load(f)
@@ -53,7 +54,7 @@ def get_maintenance(user_accs, nodespath, urls_paths, tunnel_token):
     for key, value in user_accs.items():
         maintenance.append(key)
         if key.upper() in systems.keys():
-            for node in systems[key.upper()]:
+            for node in systems(key.upper(), {}).get('nodes', []):
                 with closing(requests.get("{}?node={}".format(available_url, node), headers={'Intern-Authorization': tunnel_token}, verify=False)) as r:
                     if r.status_code == 200 and r.text.lower().strip().strip('"') == 'true':
                         ret[key] = value
