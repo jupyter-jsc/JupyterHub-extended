@@ -54,7 +54,7 @@ def get_maintenance(user_accs, urls_paths, tunnel_token):
     for key, value in user_accs.items():
         maintenance.append(key)
         if key.upper() in systems.keys():
-            for node in systems(key.upper(), {}).get('nodes', []):
+            for node in systems.get(key.upper(), {}).get('nodes', []):
                 with closing(requests.get("{}?node={}".format(available_url, node), headers={'Intern-Authorization': tunnel_token}, verify=False)) as r:
                     if r.status_code == 200 and r.text.lower().strip().strip('"') == 'true':
                         ret[key] = value
