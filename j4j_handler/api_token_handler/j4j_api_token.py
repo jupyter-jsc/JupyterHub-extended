@@ -35,7 +35,7 @@ class J4J_APITokenHandler(APIHandler):
                 if found is not None:
                     user = self._user_from_orm(found.user)
         except:
-            self.log.debug("uuidcode={} - Could not find user for this token: {}".format(uuidcode, self.request.headers))
+            self.log.debug("uuidcode={} - Could not find user for this token: {}".format(uuidcode, self.request.headers.get('Authorization', '<no Authorization header>')))
         #if not user:
         #    user = self.find_user(username)
         if user:

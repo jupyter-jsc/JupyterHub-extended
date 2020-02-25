@@ -41,6 +41,10 @@ class J4J_LogoutHandler(LogoutHandler):
                 elif state['login_handler'] == 'hdfaai':
                     header['tokenurl'] = os.environ.get('HDFAAI_TOKEN_URL', 'https://unity.helmholtz-data-federation.de/oauth2/token')
                     header['authorizeurl'] = os.environ.get('HDFAAI_AUTHORIZE_URL', 'https://unity.helmholtz-data-federation.de/oauth2-as/oauth2-authz')
+                else:
+                    self.log.info("Use default tokenurl")
+                    header['tokenurl'] = os.environ.get('JSCLDAP_TOKEN_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2/token')
+                    header['authorizeurl'] = os.environ.get('JSCLDAP_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as/oauth2-authz')
                 self.log.debug("uuidcode={} - User Spawners: {}".format(uuidcode, user.spawners))
                 names = []
                 db_spawner_list = user.db.query(orm.Spawner).filter(orm.Spawner.user_id == user.orm_user.id).all()
