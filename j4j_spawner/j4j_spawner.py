@@ -179,6 +179,32 @@ class J4J_Spawner(Spawner):
             db_spawner = None
             await sleep(1)
 
+    def setup_voila_proxy(self, uuidcode, voilaport, urls=None):
+        # add routes for voila to proxy
+        try:
+            if not urls:
+                with open(self.user.authenticator.j4j_urls_paths, 'r') as f:
+                    urls = json.load(f)
+            with open(self.user.authenticator.proxy_secret, 'r') as f:
+                proxy_secret = f.read().strip()
+            proxy_secret = proxy_secret.strip()[len('export CONFIGPROXY_AUTH_TOKEN='):]
+            proxy_headers = { 'Authorization': 'token {}'.format(proxy_secret)}
+            target = "http://{}:{}".format(urls.get('tunnel', {}).get('hostname'), voilaport)
+            proxy_urls = []
+            if self.hub.base_url == '/hub/':
+                proxy_base_url = urls.get('hub', {}).get('url_api', 'http://j4j_proxy:8001')
+            else:
+                proxy_base_url = urls.get('hub', {}).get('url_api', 'http://j4j_{}_proxy:8001'.format(self.hub.base_url[1:-len('/hub/')])) 
+            proxy_urls.append('/api/routes{shortbaseurl}{username}/{servername}/dashboard'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
+            proxy_json = {'target': target}
+            for proxy_url in proxy_urls:
+                with closing(requests.post(proxy_base_url+proxy_url, headers=proxy_headers, json=proxy_json, verify=False)) as r:
+                    if r.status_code != 201:
+                        raise Exception('{} {} {}'.format(proxy_base_url+proxy_url, r.status_code, r.text))
+                self.log.debug("userserver={} - uuidcode={} Added voila route to proxy: {} => {}".format(self._log_name.lower(), uuidcode, proxy_url, target))
+        except:
+            self.log.exception("userserver={} - uuidcode={} Could not add voila route to proxy".format(self._log_name.lower(), uuidcode))
+        
     def setup_proxys(self, uuidcode, urls=None):
         # add routes to proxy
         try:
@@ -231,6 +257,9 @@ class J4J_Spawner(Spawner):
             proxy_urls.append('/api/routes{baseurl}api/users/{username}/servers/{servername}/progress'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
             proxy_urls.append('/api/routes{baseurl}api/jobstatus/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
             proxy_urls.append('/api/routes{baseurl}api/cancel/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
+            # voila urls
+            proxy_urls.append('/api/routes{shortbaseurl}{username}/{servername}/dashboard'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
+            
             with open(self.user.authenticator.proxy_secret, 'r') as f:
                 proxy_secret = f.read().strip()
             proxy_secret = proxy_secret.strip()[len('export CONFIGPROXY_AUTH_TOKEN='):]
