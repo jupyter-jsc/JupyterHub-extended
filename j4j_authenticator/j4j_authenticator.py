@@ -300,7 +300,7 @@ class BaseAuthenticator(GenericOAuthenticator):
 
     async def update_mem(self, user, caller):
         try:
-            self.log.debug("{} - Update memory of spawner. Called by: {}".format(user.name, caller))
+            #self.log.debug("{} - Update memory of spawner. Called by: {}".format(user.name, caller))
             with open(self.j4j_urls_paths, 'r') as f:
                 j4j_paths = json.load(f)
             with open(j4j_paths.get('hub', {}).get('path_partitions', '<no_path_found>'), 'r') as f:
@@ -312,6 +312,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             if user_state:
                 user_dic = user_state.get('user_dic', {})
             else:
+                self.log.warning("{} - Could not get auth_state for user {}".format(caller, user.name))
                 return
             spawner = {}
             name_list = []
@@ -333,13 +334,18 @@ class BaseAuthenticator(GenericOAuthenticator):
                     if db_spawner.user_options.get('system').upper() == 'DOCKER':
                         spawner[db_spawner.name]['spawnable'] = True
                     else:
-                        spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
+                        if db_spawner.user_options.get('reservation', 'None') != 'None' and db_spawner.user_options.get('reservation', 'None') != '' and db_spawner.user_options.get('reservation', 'None') != None:
+                            if self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE":
+                                spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
+                            else:
+                                spawner[db_spawner.name]['spawnable'] = False
+                        else:
+                            spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
                 else:
                     spawner[db_spawner.name]['spawnable'] = True
                 spawner[db_spawner.name]['state'] = db_spawner.state
                 #self.log.debug("{} - Spawner {} spawnable: {}".format(user.name, db_spawner.name, spawner[db_spawner.name]['spawnable']))
             to_pop_list = []
-            to_add_list = []
             for name in user.spawners.keys():
                 if name not in name_list:
                     to_pop_list.append(name)
@@ -427,7 +433,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 self.log.debug("{} - Refresh {}".format(user.name, dirty_obj))
                 self.db.refresh(dirty_obj)
         except:
-            self.log.exception("{} - Could not update memory.".format(caller))
+            self.log.exception("{} - Could not update memory.".format(user.name))
 
     spawnable_dic = {}
     def spawnable(self, user_name, server_name):
