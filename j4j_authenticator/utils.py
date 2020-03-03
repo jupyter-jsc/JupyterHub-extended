@@ -52,3 +52,32 @@ def stripper(data):
             ret[k] = v
     return ret
 
+# add reservations
+def reservations(reservation_paths):
+    ret = {}
+    for name, path in reservation_paths.items():
+        with open(path) as f:
+            s = f.read()
+        if name.lower() in ['jureca', 'juwels']:
+            ret[name] = juwels_jureca_reservation(name.lower(), s)
+    return ret
+
+# reservation strings to dic
+def juwels_jureca_reservation(name, s):
+    li = s.split("ReservationName=")
+    dic = {}
+    for reservation in li[1:]:
+        try:
+            lines = reservation.replace("\n", " ")
+            lineList = lines.split()
+            dic[lineList[0]] = {}
+            for pair in lineList[1:]:
+                keyValue = pair.split("=")
+                try:
+                    dic[lineList[0]][keyValue[0]] = keyValue[1]
+                except IndexError:
+                    dic[lineList[0]][keyValue[0]] = "unknown"
+        except:
+            del dic[lineList[0]]
+            continue
+    return dic

@@ -20,6 +20,8 @@ from oauthenticator.generic import GenericOAuthenticator
 
 from .j4j_logout import J4J_LogoutHandler
 from .utils import get_user_dic 
+from j4j_authenticator import utils
+import time
 
 class HDFAAICallbackHandler(OAuthCallbackHandler):
     pass
@@ -33,7 +35,7 @@ class HDFAAILoginHandler(OAuthLoginHandler, HDFAAIEnvMixin):
         with open(self.authenticator.unity_file, 'r') as f:
             unity = json.load(f)
         redirect_uri = self.authenticator.get_callback_url(None, "HDFAAI")
-        self.log.info('OAuth redirect: %r', redirect_uri)
+        self.log.debug('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
         self.set_state_cookie(state)
         self.authorize_redirect(
@@ -239,6 +241,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         help = "Path to the J4J_Tunnel token file"
     )
 
+    reservation_path = Unicode(
+        os.environ.get("RESERVATION_PATH", ""),
+        config = True,
+        help = "Path to all reservations"
+    )
+    
     enable_auth_state = Bool(
         os.environ.get('ENABLE_AUTH_STATE', False).lower() in {'true', '1'},
         config=True,
@@ -259,6 +267,28 @@ class BaseAuthenticator(GenericOAuthenticator):
         New in JupyterHub 0.8
         """,
     )
+    
+    _reservations = {}
+    _reservation_next_update = 0
+    
+    def get_reservations(self):
+        if len(self._reservations) > 0 and self._reservation_next_update - int(time.time()) > 0:
+            return self._reservations
+        else:
+            try:
+                tmp_dic = {}
+                for system_reservation in os.listdir(self.reservation_path):
+                    system_reservation_path = os.path.join(self.reservation_path, system_reservation)
+                    system = system_reservation.split("_")[0]
+                    tmp_dic[system] = system_reservation_path
+                self._reservations = utils.reservations(tmp_dic)
+                self._reservation_next_update = int(time.time()) + 300
+                self.log.info("Updated Reservations")
+                return self._reservations
+            except:
+                self._reservations = {}
+                return self._reservations
+            
 
     login_handler = [JSCLDAPLoginHandler, JSCUsernameLoginHandler, HDFAAILoginHandler]
     logout_handler = J4J_LogoutHandler
@@ -433,7 +463,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 self.log.debug("{} - Refresh {}".format(user.name, dirty_obj))
                 self.db.refresh(dirty_obj)
         except:
-            self.log.exception("{} - Could not update memory.".format(user.name))
+            self.log.exception("{} - Could not update memory".format(user.name))
 
     spawnable_dic = {}
     def spawnable(self, user_name, server_name):
@@ -498,7 +528,6 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
-        self.log.debug("uuidcode={} , First response: {}".format(uuidcode, resp_json))
 
         accesstoken = resp_json.get('access_token', None)
         refreshtoken = resp_json.get('refresh_token', None)
@@ -521,7 +550,6 @@ class BaseAuthenticator(GenericOAuthenticator):
                           validate_cert=self.tls_verify)
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
-        self.log.debug("uuidcode={} , Second response: {}".format(uuidcode, resp_json))
 
         username_key = unity[self.hdfaai_authorize_url]['username_key']
 
@@ -535,7 +563,6 @@ class BaseAuthenticator(GenericOAuthenticator):
                               validate_cert=self.tls_verify)
         resp_exp = await http_client.fetch(req_exp)
         resp_json_exp = json.loads(resp_exp.body.decode('utf8', 'replace'))
-        self.log.debug("uuidcode={} , Third response: {}".format(uuidcode, resp_json_exp))
 
         tokeninfo_exp_key = unity[self.hdfaai_token_url].get('tokeninfo_exp_key', 'exp')
         if not resp_json_exp.get(tokeninfo_exp_key):
@@ -678,7 +705,6 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         # collect hpc infos with the known ways
         hpc_infos = resp_json.get(self.hpc_infos_key, '')
-        self.log.debug("uuidcode={} - Unity sent these hpc_infos: {}".format(uuidcode, hpc_infos))
 
         # If it's empty we assume that it's a new registered user. So we collect the information via ssh to UNICORE.
         # Since the information from Unity and ssh are identical, it makes no sense to do it if len(hpc_infos) != 0

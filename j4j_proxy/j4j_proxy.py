@@ -172,7 +172,7 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                 route_servername = None
                 spawn_skip = False
                 try:
-                    self.log.debug("Route as List: {}".format(route_as_list))
+                    #self.log.debug("Route as List: {}".format(route_as_list))
                     if route_as_list[0] == 'integration':
                         if route_as_list[1] == 'hub':
                             if route_as_list[2] == 'api':

@@ -10,6 +10,7 @@ import json
 import socket
 import time
 import datetime
+import os
 
 from traitlets import Unicode, Dict
 from asyncio import sleep
@@ -27,15 +28,16 @@ from .html import create_html
 from .communication import j4j_orchestrator_request
 from .file_loads import get_token
 from j4j_spawner.utils import get_maintenance
+from j4j_spawner import utils
 
 class J4J_Spawner(Spawner):
     # Variables for the options_form
     #partitions_path = Unicode(config=True, help='')
     reservation_paths = Dict(config=True, help='')
     style_path = Unicode(config=True, help='')
+    cronjobinfopath = Unicode(os.environ.get('CRONJOBINFO_PATH', ''), config=True, help='')
     dockerimages_path = Unicode(config=True, help='')
     project_checkbox_path = Unicode(config=True, help='')
-    nodes_path = Unicode(config=True, help='')
     html_code = ""
 
     # Variables for the jupyter application
@@ -54,6 +56,7 @@ class J4J_Spawner(Spawner):
     sendmail = False
     login_handler = ''
     useraccs_complete = False
+    error_message = ""
     system = ""
     project = ""
     account = ""
@@ -289,8 +292,28 @@ class J4J_Spawner(Spawner):
             self.user.encrypted_auth_state = db_user.encrypted_auth_state
         state = await self.user.get_auth_state()
         if len(state.get('accesstoken', '')) == 0 or len(state.get('refreshtoken', '')) == 0 or len(state.get('expire', '')) == 0:
-            self.handler.redirect(self.user.authenticator.logout_url(self.hub.base_url))
-            raise Exception("{} - Could not find auth state. Please login again.".format(uuidcode))
+                    # check for cron job:
+            try:
+                with open(self.cronjobinfopath, 'r') as f:
+                    cron_job = json.load(f)
+                if self.user.name == cron_job.get('username', '') and \
+                cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('servername', '') == self._log_name.lower().split(':')[1] and \
+                cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('account', '') == self.user_options.get('account', '') and \
+                cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('project', '') == self.user_options.get('project', '') and \
+                cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('partition', '') == self.user_options.get('partition', ''):
+                    accesstoken, refreshtoken, expire = utils.get_accesstoken(self.log, cron_job.get('tokenurl', ''), cron_job.get('authorizeurl', ''))
+                    state['accesstoken'] = accesstoken
+                    state['expire'] = expire
+                    state['refreshtoken'] = refreshtoken
+                    state['loginhandler'] = "jscldap"
+                    await self.user.save_auth_state(state)
+                else:
+                    self.handler.redirect(self.user.authenticator.logout_url(self.hub.base_url))
+                    raise Exception("{} - Could not find auth state. Please login again.".format(uuidcode))
+            except:
+                self.log.exception("Could not check for cron job infos")
+                self.handler.redirect(self.user.authenticator.logout_url(self.hub.base_url))
+                raise Exception("{} - Could not find auth state. Please login again.".format(uuidcode))
 
         self.system = self.user_options.get('system', '')
         if self.system.lower() == 'docker':
@@ -533,7 +556,7 @@ class J4J_Spawner(Spawner):
             setattr(db_spawner, 'state', self.get_state())
             self.user.db.commit()
             tunnel_token = get_token(self.user.authenticator.tunnel_token_path)
-            user_dic, maintenance = get_maintenance(user_dic, self.nodes_path, self.user.authenticator.j4j_urls_paths, tunnel_token)
+            user_dic, maintenance = get_maintenance(user_dic, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
                 self.log.debug("userserver={} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
             reservations_var = reservations(user_dic, self.reservation_paths)
