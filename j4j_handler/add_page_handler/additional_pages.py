@@ -15,3 +15,30 @@ class J4J_ToSHandler(BaseHandler):
                     'tos.html',
                     user=user)
         self.finish(html)
+        
+class J4J_DPSHandler(BaseHandler):
+    async def get(self):
+        user = self.current_user
+        
+        html = self.render_template(
+                    'dps.html',
+                    user=user)
+        self.finish(html)
+        
+class J4J_ImprintHandler(BaseHandler):
+    async def get(self):
+        user = self.current_user
+        
+        html = self.render_template(
+                    'imprint.html',
+                    user=user)
+        self.finish(html)
+        
+class J4J_TestHandler(BaseHandler):
+    async def get(self):
+        user = self.current_user
+        
+        html = self.render_template(
+                    'test.html',
+                    user=user)
+        self.finish(html)
