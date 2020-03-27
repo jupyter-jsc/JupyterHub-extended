@@ -421,9 +421,9 @@ class J4J_Spawner(Spawner):
         self.db_progs_no = 0
         self.job_status = 'createjob'
         self.setup_proxys(uuidcode, urls)
-        if self.user_options.get('system').upper() == 'DOCKER':
-            # J4J_Orchestrator will create a docker container with the name "<uuidcode>"
-            return (uuidcode, self.port)
+        #if self.user_options.get('system').upper() == 'DOCKER':
+        #   # J4J_Orchestrator will create a docker container with the name "<uuidcode>"
+        #    return (uuidcode, self.port)
         return (urls.get('tunnel', {}).get('hostname', '<tunnel_hostname>'), self.port)
 
 
