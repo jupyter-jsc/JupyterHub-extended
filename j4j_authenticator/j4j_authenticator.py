@@ -217,11 +217,19 @@ class BaseAuthenticator(GenericOAuthenticator):
         help = "Path to the filled_resources file"
     )
 
-    unicore = Unicode( 
+    unicore_infos = Unicode( 
+        os.environ.get('UNICORE_INFOS', ''),
+        config = True,
+        help = "Path to the unicore.json file, with all information about u/x"
+    )
+
+    unicore_check = Unicode( 
         os.environ.get('UNICORE_PATH', ''),
         config = True,
-        help = "Path to the unicore.json file"
+        help = "Path to the unicore.json file, which systems should be checked via UNICORE/X"
     )
+
+
 
     proxy_secret = Unicode( # Used outside Authenticator
         os.environ.get('PROXY_SECRET', ''),
@@ -723,7 +731,7 @@ class BaseAuthenticator(GenericOAuthenticator):
 
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet        
         self.log.debug("uuidcode={} - hpc_infos: {}".format(uuidcode, hpc_infos))
-        user_accs = get_user_dic(hpc_infos, self.resources, self.unicore)
+        user_accs = get_user_dic(hpc_infos, self.resources, self.unicore_infos)
         self.log.debug("uuidcode={} - User_accs dic: {}".format(uuidcode, user_accs))
         # Check for HPC Systems in self.unicore
         waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
@@ -870,7 +878,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 hpc_infos = [hpc_infos]
 
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
-        user_accs = get_user_dic(hpc_infos, self.resources, self.unicore)
+        user_accs = get_user_dic(hpc_infos, self.resources, self.unicore_infos)
 
         # Check for HPC Systems in self.unicore
         waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
@@ -895,7 +903,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 j4j_paths = json.load(f)
             with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
                 orchestrator_token = f.read().rstrip()
-            with open(self.unicore, 'r') as f:
+            with open(self.unicore_check, 'r') as f:
                 unicore_file = json.load(f)
             machine_list = unicore_file.get('machines', [])
             # remove machines that are already served via Unity or ssh
