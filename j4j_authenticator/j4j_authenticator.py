@@ -722,7 +722,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 hpc_infos = [hpc_infos]
 
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
-        user_accs = get_user_dic(hpc_infos, self.resources)
+        user_accs = get_user_dic(hpc_infos, self.resources, self.unicore)
 
         # Check for HPC Systems in self.unicore
         waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
@@ -869,7 +869,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 hpc_infos = [hpc_infos]
 
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
-        user_accs = get_user_dic(hpc_infos, self.resources)
+        user_accs = get_user_dic(hpc_infos, self.resources, self.unicore)
 
         # Check for HPC Systems in self.unicore
         waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
