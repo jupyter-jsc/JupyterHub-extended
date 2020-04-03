@@ -2,5 +2,6 @@ from j4j_handler import api_proxy_handler
 from j4j_handler import api_cancel_handler
 from j4j_handler import api_status_handler
 from j4j_handler import api_token_handler
+from j4j_handler import add_page_handler
 from j4j_handler import home_handler
 from j4j_handler import spawn_handler
