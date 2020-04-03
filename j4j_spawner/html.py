@@ -50,7 +50,7 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
     html += inputs(system, account, project, partition, reservation_default)
     html += '<div class="j4j">\n'
     script += function_hide_all(user_accs, reservations)
-    html += '  <div id="system_div" style="display:display">\n'
+    html += '  <div id="system___div" style="display:display">\n'
     if not useraccs_complete:
         html += '<center><h4>We"re looking for your accounts in the background.<br>If you"re missing accounts please refresh the page after a few seconds.</h4></center>'
     t1, t2 = dropdown(user_accs_w_docker, 'System:', 'system')
@@ -58,10 +58,10 @@ def create_html(user_accs, reservations, partitions_path, stylepath, dockerimage
     html += '  </div>\n'
     script += t2
     for system, accounts in user_accs.items():
-        t1, t2 = html_system('system_'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, disclaimer.get(system, False), system==sorted(user_accs.keys(), key=lambda s: s.casefold())[0])
+        t1, t2 = html_system('system___'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, disclaimer.get(system, False), system==sorted(user_accs.keys(), key=lambda s: s.casefold())[0])
         html += t1
         script += t2
-    t1, t2 = docker('system_Docker', dockerimages, docker_show, project_checkbox)
+    t1, t2 = docker('system___Docker', dockerimages, docker_show, project_checkbox)
     html += t1
     script += t2
     html += '</div>\n'
@@ -78,19 +78,19 @@ def docker(system, dockerimages, docker_show, project_checkbox):
     html = ''
     script = ''
     if docker_show:
-        html += '  <div id="{div_id}_div" style="display:display">\n'.format(div_id=system)
+        html += '  <div id="{div_id}___div" style="display:display">\n'.format(div_id=system)
     else:
-        html += '  <div id="{div_id}_div" style="display:none">\n'.format(div_id=system)
+        html += '  <div id="{div_id}___div" style="display:none">\n'.format(div_id=system)
     t1, t2 = docker_dropdown(dockerimages, "Docker Image:", system)
     html += t1
     script += t2
     for project_cb_name, project_cb in project_checkbox.get('DOCKER', {}).items():
-        t1, t2 = checkbox(system+'_'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
+        t1, t2 = checkbox(system+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
         html += t1
         script += t2
     for project_cb_name, project_cb in project_checkbox.get('ALL', {}).items():
         if project_cb.get('docker', 'false').lower() == 'true':
-            t1, t2 = checkbox(system+'_'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
+            t1, t2 = checkbox(system+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
             html += t1
             script += t2
     html += '    <font size="+1">For more information look at this <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/FAQ.ipynb" target="_blank">FAQ</a></font><br>\n'
@@ -113,36 +113,36 @@ def inputs(system, account, project, partition, reservation, show=False):
 def function_hide_all(user_accs, reservations):
     script = 'function hideAll(){\n'
     for sys, dic in user_accs.items():
-        script += "  $('#system_{}_div').hide();\n".format(sys)
+        script += "  $('#system___{}___div').hide();\n".format(sys)
         if len(dic) == 0:
             continue
         for account, projects in dic.items():
-            script += "  $('#system_{}_{}_div').hide();\n".format(sys, account)
+            script += "  $('#system___{}___{}___div').hide();\n".format(sys, account)
             if len(projects) == 0:
                 continue
             for project, partitions in projects.items():
-                script += "  $('#system_{}_{}_{}_div').hide();\n".format(sys, account, project)
+                script += "  $('#system___{}___{}___{}___div').hide();\n".format(sys, account, project)
                 if len(partitions) == 0:
                     continue
                 for partition in partitions.keys():
-                    script += "  $('#system_{}_{}_{}_{}_div').hide();\n".format(sys, account, project, partition)
-                    script += "  $('#system_{}_{}_{}_{}_reservation_input').prop('checked', false);\n".format(sys, account, project, partition)
+                    script += "  $('#system___{}___{}___{}___{}___div').hide();\n".format(sys, account, project, partition)
+                    script += "  $('#system___{}___{}___{}___{}___reservation_input').prop('checked', false);\n".format(sys, account, project, partition)
                     reservation_already_used = []
                     reservations_length = 0
                     for reservation_name, infos in reservations.get(sys, {}).get('Account', {}).get(account, {}).items():
                         if partition in infos.get('PartitionName'):
-                            script += "  $('#system_{}_{}_{}_{}_reservation_{}_div').hide();\n".format(sys, account, project, partition, reservation_name)
+                            script += "  $('#system___{}___{}___{}___{}___reservation_{}_div').hide();\n".format(sys, account, project, partition, reservation_name)
                             reservation_already_used.append(reservation_name)
                             reservations_length += 1
                     for reservation_name, infos in reservations.get(sys, {}).get('Project', {}).get(project, {}).items():
                         if partition in infos.get('PartitionName'):
                             if reservation_name not in reservation_already_used:
-                                script += "  $('#system_{}_{}_{}_{}_reservation_{}_div').hide();\n".format(sys, account, project, partition, reservation_name)
+                                script += "  $('#system___{}___{}___{}___{}___reservation___{}___div').hide();\n".format(sys, account, project, partition, reservation_name)
                                 reservations_length += 1
                     if reservations_length > 0:
-                        script += "  $('#system_{}_{}_{}_{}_reservation_None_div').hide();\n".format(sys, account, project, partition)
+                        script += "  $('#system___{}___{}___{}___{}___reservation___None___div').hide();\n".format(sys, account, project, partition)
     # hide docker stuff, too
-    script += "  $('#system_{}_div').hide();\n".format('Docker')
+    script += "  $('#system___{}___div').hide();\n".format('Docker')
     script += '}\n'
     return script
 
@@ -158,29 +158,27 @@ def html_system(system, accounts, resources_filled, reservations, project_checkb
 def dropdowns(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show=False):
     html  = ''
     script = ''
-    system_name_list = system.split('_')
+    system_name_list = system.split('___')
     system_name = ''
     if len(system_name_list) == 2:
         system_name = system_name_list[1].upper()
     accountlist = sorted(accounts.keys(), key=lambda s: s.casefold())
     if show:
         #html += '  <div id="{div_id}_div" class="machine_j4spawner" style="display:display">\n'.format(div_id=system)
-        html += '  <div id="{div_id}_div" style="display:display">\n'.format(div_id=system)
+        html += '  <div id="{div_id}___div" style="display:display">\n'.format(div_id=system)
     else:
         #html += '  <div id="{div_id}_div" class="machine_j4spawner" style="display:none">\n'.format(div_id=system)
-        html += '  <div id="{div_id}_div" style="display:none">\n'.format(div_id=system)
+        html += '  <div id="{div_id}___div" style="display:none">\n'.format(div_id=system)
     t1, t2 = dropdown(accountlist, 'Account:', system)
     html += t1
     script += t2
     for account, projects in accounts.items():
         projectlist = sorted(projects.keys(), key=lambda s: s.casefold())
         if account == accountlist[0]:
-            #html += '  <div id="{div_id}_div" class="machine_j4spawner" style="display:display">\n'.format(div_id=system+'_'+account)
-            html += '  <div id="{div_id}_div" style="display:display">\n'.format(div_id=system+'_'+account)
+            html += '  <div id="{div_id}___div" style="display:display">\n'.format(div_id=system+'___'+account)
         else:
-            #html += '  <div id="{div_id}_div" class="machine_j4spawner" style="display:none">\n'.format(div_id=system+'_'+account)
-            html += '  <div id="{div_id}_div" style="display:none">\n'.format(div_id=system+'_'+account)
-        t1, t2 = dropdown(projectlist, 'Project:', system+'_'+account)
+            html += '  <div id="{div_id}___div" style="display:none">\n'.format(div_id=system+'___'+account)
+        t1, t2 = dropdown(projectlist, 'Project:', system+'___'+account)
         html += t1
         script += t2
         for project, partitions in projects.items():
@@ -192,19 +190,17 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
             if len(partitionlist) == 0:
                 continue
             if project==projectlist[0] and account==accountlist[0]:
-                #html += '  <div id="{div_id}_div" class="machine_j4spawner" style="display:display">\n'.format(div_id=system+'_'+account+'_'+project)
-                html += '  <div id="{div_id}_div" style="display:display">\n'.format(div_id=system+'_'+account+'_'+project)
+                html += '  <div id="{div_id}___div" style="display:display">\n'.format(div_id=system+'___'+account+'___'+project)
             else:
-                #html += '  <div id="{div_id}_div" class="machine_j4spawner" style="display:none">\n'.format(div_id=system+'_'+account+'_'+project)
-                html += '  <div id="{div_id}_div" style="display:none">\n'.format(div_id=system+'_'+account+'_'+project)
-            t1, t2 = dropdown(partitionlist, 'Partition:', system+'_'+account+'_'+project)
+                html += '  <div id="{div_id}___div" style="display:none">\n'.format(div_id=system+'___'+account+'___'+project)
+            t1, t2 = dropdown(partitionlist, 'Partition:', system+'___'+account+'___'+project)
             html += t1
             script += t2
             for partition, resources in partitions_supported.items():
                 if partition==partitionlist[0] and project==projectlist[0] and account==accountlist[0]:
-                    html += '<div id="{}_div" style="display:display">\n'.format(system+'_'+account+'_'+project+'_'+partition)
+                    html += '<div id="{}___div" style="display:display">\n'.format(system+'___'+account+'___'+project+'___'+partition)
                 else:
-                    html += '<div id="{}_div" style="display:none">\n'.format(system+'_'+account+'_'+project+'_'+partition)
+                    html += '<div id="{}___div" style="display:none">\n'.format(system+'___'+account+'___'+project+'___'+partition)
                 reservation_for_partition = {}
                 for reservation_name, infos in reservations.get('Account', {}).get(account, {}).items():
                     if infos.get('PartitionName').lower() == partition:
@@ -215,44 +211,37 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
                 reservationlist = sorted(reservation_for_partition.keys())
                 if len(reservationlist) > 0:
                     reservationlist.insert(0, 'None')
-                    t1, t2 = dropdown(reservationlist, 'Reservation:', system+'_'+account+'_'+project+'_'+partition, reservation_for_partition)
+                    t1, t2 = dropdown(reservationlist, 'Reservation:', system+'___'+account+'___'+project+'___'+partition, reservation_for_partition)
                     html += t1
                     script += t2
-                    t1, t2 = checkbox(system+'_'+account+'_'+project+'_'+partition+'_reservation', "Show reservation info", "Show more information for your reservations")
+                    t1, t2 = checkbox(system+'___'+account+'___'+project+'___'+partition+'___reservation', "Show reservation info", "Show more information for your reservations")
                     html += t1
                     script += t2
                     for s in reservationlist:
-                        t1,t2 = reservationInfo(system+'_'+account+'_'+project+'_'+partition+'_reservation_'+s, reservation_for_partition.get(s))
+                        t1,t2 = reservationInfo(system+'___'+account+'___'+project+'___'+partition+'___reservation___'+s, reservation_for_partition.get(s))
                         html += t1
                 for resource, infos in resources.items():
-                    html += html_resource(infos, system+'_'+account+'_'+project+'_'+partition+'_'+resource)
+                    html += html_resource(infos, system+'___'+account+'___'+project+'___'+partition+'___'+resource)
                 for project_cb_name, project_cb in project_checkbox.get(system_name, {}).items():
                     if partition in project_cb.get('partition', []):
-                        t1, t2 = checkbox(system+'_'+account+'_'+project+'_'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
+                        t1, t2 = checkbox(system+'___'+account+'___'+project+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
                         html += t1
                         script += t2
                 html += '</div>\n'
                 
             for project_cb_name, project_cb in project_checkbox.get(system_name, {}).items():
                 if project in project_cb.get('projects', []):
-                    t1, t2 = checkbox(system+'_'+account+'_'+project+'_'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
+                    t1, t2 = checkbox(system+'___'+account+'___'+project+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
                     html += t1
                     script += t2
             html += '</div>\n'
         html += '</div>\n'
     for project_cb_name, project_cb in project_checkbox.get('ALL', {}).items():
-        t1, t2 = checkbox(system+'_'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
+        t1, t2 = checkbox(system+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
         html += t1
         script += t2
-    #t1, t2 = checkbox(system+'_tutorial', "<b><i><span class=\"checkbox_span_j4j\">For Jupyter-beginner:</span></i></b>&nbsp;Download Jupyter@JSC-Tutorial", "When activated a git repository with examples for Jupyter Notebooks will be downloaded to ~/Jupyter@JSC-Tutorial")
-    #html += t1
-    #script += t2
-    #t1, t2 = checkbox(system+'_loadmodules',"Load modules from ~/."+system.split('_')[1]+"_jupyter_modules.sh","With this option you can load additional modules.<br>Do not use \"module --force purge\" or similar commands!<br>Example for ~/."+system+"_jupyter_modules.sh:<br>\&emsp;module load mod1;<br>\&emsp;module load mod2;")
-    #html += t1
-    #script += t2
+
     html += '  <p><font size="+1">Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a>\n'
-    #if disclaimer:
-    #    html += '  <br><i><span class="checkbox_span_j4j">Please ensure that the project can use the partition</span></i>'
     html += '  </font></p>'
     html += '</div>\n'
     return html, script
@@ -261,7 +250,7 @@ def reservationInfo(div_id, reservation):
     html = '<div id="{}_div" class="reservation_info_j4j" style="display: none">\n'.format(div_id)
     html += '  <table class="table_j4j">\n'
     html += '    <tr class="table_tr_j4j">\n'
-    tmp = div_id.split('_')
+    tmp = div_id.split('___')
     name = tmp[len(tmp)-1]
     html += '      <th colspan="2" class="table_th_j4j">Reservation: {}</th>\n'.format(name)
     html += '    </tr>\n'
@@ -313,10 +302,10 @@ def checkbox(div_id, text, tooltip, noqm=False):
         script += "jQuery('#"+div_id+"_image').ready(function(e){\n"
         script += "  $('#"+div_id+"_image').tooltip({title: '"+tooltip+"', delay: 0, placement: 'bottom', html: true});\n"
         script += "});\n"
-    if '_reservation' == div_id[-len('_reservation'):]:
+    if '___reservation' == div_id[-len('___reservation'):]:
         script += "$('#"+div_id+"_input').click(function() {\n"
         script += "  var reservation = $('#reservation_input').val();\n"
-        script += "  $('#"+div_id+"_'+reservation+'_div').toggle(this.checked);\n"
+        script += "  $('#"+div_id+"___'+reservation+'___div').toggle(this.checked);\n"
         script += "});\n"
         """
         script += "jQuery('#"+div_id+"').change(function(e){\n"
@@ -360,15 +349,15 @@ def docker_dropdown(li, text, div_id):
     html += '          {}\n'.format(li[0])
     html += '          <span class="caret"></span>\n'
     html += '        </button>\n'
-    html += '        <ul class="dropdown-menu" name="uid" id="{}_ul">\n'.format(div_id)
+    html += '        <ul class="dropdown-menu" name="uid" id="{}___ul">\n'.format(div_id)
     for key in li:
-        html += '          <li><a href="#" id="{div_id}_element_{key}">{key_name}</a></li>\n'.format(div_id=div_id, key=key.replace('/', slash).replace(':', colon).replace('.', dot), key_name=key)
+        html += '          <li><a href="#" id="{div_id}___element___{key}">{key_name}</a></li>\n'.format(div_id=div_id, key=key.replace('/', slash).replace(':', colon).replace('.', dot), key_name=key)
     html += '        </ul>\n'
     html += '      </div>\n'
     html += '    </div>\n'
     script  = ''
     for key in li:
-        script += "jQuery('#"+div_id+"_element_"+key.replace('/', slash).replace(':', colon).replace('.', dot)+"').click(function(e){\n"
+        script += "jQuery('#"+div_id+"___element___"+key.replace('/', slash).replace(':', colon).replace('.', dot)+"').click(function(e){\n"
         var = 'account'
         script += "  if ( $('#"+var+"_input').val() === \""+key+"\" ){\n"
         script += "    e.preventDefault();\n"
@@ -377,13 +366,13 @@ def docker_dropdown(li, text, div_id):
         script += "    $('#{}').html('{} <span class=\"caret\"></span>');\n".format(div_id, key)
         script += "    $('#{}_input').val('{}');\n".format(var, key)
         script += "    hideAll();\n"
-        split = div_id.split('_')
+        split = div_id.split('___')
         for i in range(1,len(split)):
             s = ""
             for j in range(0, i+1):
-                s += split[j]+'_'
+                s += split[j]+'___'
             script += "    $('#{}div').show();\n".format(s)
-        script += "    $('#{}_{}_div').show();\n".format(div_id, key.replace('/', slash).replace(':', colon).replace('.', dot))
+        script += "    $('#{}___{}___div').show();\n".format(div_id, key.replace('/', slash).replace(':', colon).replace('.', dot))
         script += "    e.preventDefault();\n"
         script += "  }\n"
         script += "});\n"
@@ -404,27 +393,27 @@ def dropdown(li, text, div_id, reservations={}):
         html += '          {}\n'.format(li[0])
     html += '          <span class="caret"></span>\n'
     html += '        </button>\n'
-    html += '        <ul class="dropdown-menu" name="uid" id="{}_ul">\n'.format(div_id)
+    html += '        <ul class="dropdown-menu" name="uid" id="{}___ul">\n'.format(div_id)
     if len(reservations) > 0:
         for key in li:
             if reservations.get(key, {}).get('State') == 'INACTIVE':
-                html += '          <li><a href="#" id="{div_id}_element_{key}" style="text-decoration:line-through; color:red">{key}</a></li>\n'.format(div_id=div_id, key=key)
+                html += '          <li><a href="#" id="{div_id}___element___{key}" style="text-decoration:line-through; color:red">{key}</a></li>\n'.format(div_id=div_id, key=key)
             else:
-                html += '          <li><a href="#" id="{div_id}_element_{key}">{key}</a></li>\n'.format(div_id=div_id, key=key)
+                html += '          <li><a href="#" id="{div_id}___element___{key}">{key}</a></li>\n'.format(div_id=div_id, key=key)
     else:
         for key in li:
             if key == 'Docker':
-                html += '          <li><a href="#" id="{div_id}_element_{key}">{key2}</a></li>\n'.format(div_id=div_id, key=key, key2="HDF-Cloud")
+                html += '          <li><a href="#" id="{div_id}___element___{key}">{key2}</a></li>\n'.format(div_id=div_id, key=key, key2="HDF-Cloud")
             else:
-                html += '          <li><a href="#" id="{div_id}_element_{key}">{key}</a></li>\n'.format(div_id=div_id, key=key)
+                html += '          <li><a href="#" id="{div_id}___element___{key}">{key}</a></li>\n'.format(div_id=div_id, key=key)
     html += '        </ul>\n'
     html += '      </div>\n'
     html += '    </div>\n'
     script  = ''
     for key in li:
-        c = div_id.count('_')
+        c = div_id.count('___')
         var = ''
-        script += "jQuery('#"+div_id+"_element_"+key+"').click(function(e){\n"
+        script += "jQuery('#"+div_id+"___element___"+key+"').click(function(e){\n"
         if c == 0:
             var = 'system'
         elif c == 1:
@@ -445,47 +434,47 @@ def dropdown(li, text, div_id, reservations={}):
             script += "    $('#{}').html('{} <span class=\"caret\"></span>');\n".format(div_id, key)
         script += "    $('#{}_input').val('{}');\n".format(var, key)
         # If c == 0 -> show key system
-        # if c == 1 -> show key account and system in div_id (split('_')[0/1])
+        # if c == 1 -> show key account and system in div_id (split('___')[0/1])
         script += "    hideAll();\n"
         # show parent divs and my own div
-        split = div_id.split('_')
+        split = div_id.split('___')
         for i in range(1,len(split)):
             s = ""
             for j in range(0, i+1):
-                s += split[j]+'_'
+                s += split[j]+'___'
             script += "    $('#{}div').show();\n".format(s)
-        script += "    $('#{}_{}_div').show();\n".format(div_id, key)
+        script += "    $('#{}___{}___div').show();\n".format(div_id, key)
         # show child divs
         if c == 3:
-            script += "    var reservation = $('#{}_{}').val();\n".format(div_id, key)
+            script += "    var reservation = $('#{}___{}').val();\n".format(div_id, key)
             script += "    $('#reservation_input').val(''+reservation);\n"
-            script += "    $('#{}_{}_'+reservation+'_div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+reservation+'___div').show();\n".format(div_id, key)
         if c == 2:
-            script += "    var partition = $('#{}_{}').val();\n".format(div_id, key)
-            script += "    var reservation = $('#{}_{}_'+partition).val();\n".format(div_id, key)
+            script += "    var partition = $('#{}___{}').val();\n".format(div_id, key)
+            script += "    var reservation = $('#{}___{}___'+partition).val();\n".format(div_id, key)
             script += "    $('#partition_input').val(''+partition);\n"
             script += "    $('#reservation_input').val(''+reservation);\n"
-            script += "    $('#{}_{}_'+partition+'_div').show();\n".format(div_id, key)
-            script += "    $('#{}_{}_'+partition+'_'+reservation+'_div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+partition+'___div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+partition+'___'+reservation+'___div').show();\n".format(div_id, key)
         if c == 1:
-            script += "    var project = $('#{}_{}').val();\n".format(div_id, key)
-            script += "    var partition = $('#{}_{}_'+project+'').val();\n".format(div_id, key)
-            script += "    var reservation = $('#{}_{}_'+project+'_'+partition).val();\n".format(div_id, key)
+            script += "    var project = $('#{}___{}').val();\n".format(div_id, key)
+            script += "    var partition = $('#{}___{}___'+project+'').val();\n".format(div_id, key)
+            script += "    var reservation = $('#{}___{}___'+project+'___'+partition).val();\n".format(div_id, key)
             script += "    $('#project_input').val(''+project);\n"
             script += "    $('#partition_input').val(''+partition);\n"
             script += "    $('#reservation_input').val(''+reservation);\n"
-            script += "    $('#{}_{}_'+project+'_div').show();\n".format(div_id, key)
-            script += "    $('#{}_{}_'+project+'_'+partition+'_div').show();\n".format(div_id, key)
-            script += "    $('#{}_{}_'+project+'_'+partition+'_'+reservation+'_div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+project+'___div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+project+'___'+partition+'___div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+project+'___'+partition+'___'+reservation+'___div').show();\n".format(div_id, key)
         if c == 0:
             if key.lower() == "docker":
-                script += "    var account2 = $('#{}_{}').val();\n".format(div_id, key)
+                script += "    var account2 = $('#{}___{}').val();\n".format(div_id, key)
                 script += "    var account = account2.replace(\"/\", \"{}\").replace(\":\", \"{}\").replace(\".\", \"{}\");\n".format(slash, colon, dot)
             else:
-                script += "    var account = $('#{}_{}').val();\n".format(div_id, key)
-            script += "    var project = $('#{}_{}_'+account+'').val();\n".format(div_id, key)
-            script += "    var partition = $('#{}_{}_'+account+'_'+project+'').val();\n".format(div_id, key)
-            script += "    var reservation = $('#{}_{}_'+account+'_'+project+'_'+partition).val();\n".format(div_id, key)
+                script += "    var account = $('#{}___{}').val();\n".format(div_id, key)
+            script += "    var project = $('#{}___{}___'+account+'').val();\n".format(div_id, key)
+            script += "    var partition = $('#{}___{}___'+account+'___'+project+'').val();\n".format(div_id, key)
+            script += "    var reservation = $('#{}___{}___'+account+'___'+project+'___'+partition).val();\n".format(div_id, key)
             if key.lower() == "docker":
                 script += "    $('#account_input').val(''+account2);\n"
             else:
@@ -493,10 +482,10 @@ def dropdown(li, text, div_id, reservations={}):
             script += "    $('#project_input').val(''+project);\n"
             script += "    $('#partition_input').val(''+partition);\n"
             script += "    $('#reservation_input').val(''+reservation);\n"
-            script += "    $('#{}_{}_'+account+'_div').show();\n".format(div_id, key)
-            script += "    $('#{}_{}_'+account+'_'+project+'_div').show();\n".format(div_id, key)
-            script += "    $('#{}_{}_'+account+'_'+project+'_'+partition+'_div').show();\n".format(div_id, key)
-            script += "    $('#{}_{}_'+account+'_'+project+'_'+partition+'_'+reservation+'_div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+account+'___div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+account+'___'+project+'___div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+account+'___'+project+'___'+partition+'___div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+account+'___'+project+'___'+partition+'___'+reservation+'_div').show();\n".format(div_id, key)
         script += "    e.preventDefault();\n"
         script += "  }\n"
         script += "});\n"
