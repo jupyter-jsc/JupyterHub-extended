@@ -131,7 +131,7 @@ def function_hide_all(user_accs, reservations):
                     reservations_length = 0
                     for reservation_name, infos in reservations.get(sys, {}).get('Account', {}).get(account, {}).items():
                         if partition in infos.get('PartitionName'):
-                            script += "  $('#system___{}___{}___{}___{}___reservation_{}_div').hide();\n".format(sys, account, project, partition, reservation_name)
+                            script += "  $('#system___{}___{}___{}___{}___reservation___{}___div').hide();\n".format(sys, account, project, partition, reservation_name)
                             reservation_already_used.append(reservation_name)
                             reservations_length += 1
                     for reservation_name, infos in reservations.get(sys, {}).get('Project', {}).get(project, {}).items():
@@ -164,10 +164,8 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
         system_name = system_name_list[1].upper()
     accountlist = sorted(accounts.keys(), key=lambda s: s.casefold())
     if show:
-        #html += '  <div id="{div_id}_div" class="machine_j4spawner" style="display:display">\n'.format(div_id=system)
         html += '  <div id="{div_id}___div" style="display:display">\n'.format(div_id=system)
     else:
-        #html += '  <div id="{div_id}_div" class="machine_j4spawner" style="display:none">\n'.format(div_id=system)
         html += '  <div id="{div_id}___div" style="display:none">\n'.format(div_id=system)
     t1, t2 = dropdown(accountlist, 'Account:', system)
     html += t1
@@ -247,7 +245,7 @@ def dropdowns(system, accounts, resources_filled, reservations, project_checkbox
     return html, script
 
 def reservationInfo(div_id, reservation):
-    html = '<div id="{}_div" class="reservation_info_j4j" style="display: none">\n'.format(div_id)
+    html = '<div id="{}___div" class="reservation_info_j4j" style="display: none">\n'.format(div_id)
     html += '  <table class="table_j4j">\n'
     html += '    <tr class="table_tr_j4j">\n'
     tmp = div_id.split('___')
@@ -307,18 +305,6 @@ def checkbox(div_id, text, tooltip, noqm=False):
         script += "  var reservation = $('#reservation_input').val();\n"
         script += "  $('#"+div_id+"___'+reservation+'___div').toggle(this.checked);\n"
         script += "});\n"
-        """
-        script += "jQuery('#"+div_id+"').change(function(e){\n"
-        script += "  var reservation = $('#reservation_input').val();\n"
-        script += "  if($('#"+div_id+"_input').is(\":checked\")) {\n"
-        script += "    console.log('show infos');\n"
-        script += "    jQuery('#"+div_id+"_'+reservation+'_div').show();\n"
-        script += "  } else {\n"
-        script += "    console.log('hide infos');\n"
-        script += "    jQuery('#"+div_id+"_'+reservation+'_div').hide();\n"
-        script += "  }\n"
-        script += "});\n"
-        """
     return html, script
 
 def html_resource(dic, div_id):
@@ -485,7 +471,7 @@ def dropdown(li, text, div_id, reservations={}):
             script += "    $('#{}___{}___'+account+'___div').show();\n".format(div_id, key)
             script += "    $('#{}___{}___'+account+'___'+project+'___div').show();\n".format(div_id, key)
             script += "    $('#{}___{}___'+account+'___'+project+'___'+partition+'___div').show();\n".format(div_id, key)
-            script += "    $('#{}___{}___'+account+'___'+project+'___'+partition+'___'+reservation+'_div').show();\n".format(div_id, key)
+            script += "    $('#{}___{}___'+account+'___'+project+'___'+partition+'___'+reservation+'___div').show();\n".format(div_id, key)
         script += "    e.preventDefault();\n"
         script += "  }\n"
         script += "});\n"
