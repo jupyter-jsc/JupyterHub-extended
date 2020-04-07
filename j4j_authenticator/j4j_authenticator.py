@@ -373,7 +373,13 @@ class BaseAuthenticator(GenericOAuthenticator):
                         spawner[db_spawner.name]['spawnable'] = True
                     else:
                         self.log.debug(user.name + " - " +db_spawner.name)
-                        self.log.debug(db_spawner.user_options.get('reservation', 'None') != 'None' + " - " + db_spawner.user_options.get('reservation', 'None') != '' + " - " + db_spawner.user_options.get('reservation', 'None') != None)
+                        try:
+                            tmp_a = db_spawner.user_options.get('reservation', 'None') != 'None'
+                            tmp_b = db_spawner.user_options.get('reservation', 'None') != ''
+                            tmp_c = db_spawner.user_options.get('reservation', 'None') != None
+                            self.log.debug( tmp_a + " - " + tmp_b + " - " + tmp_c)
+                        except:
+                            self.log.debug("None")
                         if db_spawner.user_options.get('reservation', 'None') != 'None' and db_spawner.user_options.get('reservation', 'None') != '' and db_spawner.user_options.get('reservation', 'None') != None:
                             self.log.debug(self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE")
                             if self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE":
