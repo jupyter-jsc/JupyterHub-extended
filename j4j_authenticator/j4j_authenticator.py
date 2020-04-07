@@ -372,12 +372,17 @@ class BaseAuthenticator(GenericOAuthenticator):
                     if db_spawner.user_options.get('system').upper() == 'DOCKER':
                         spawner[db_spawner.name]['spawnable'] = True
                     else:
+                        self.log.debug(user.name + " - " +db_spawner.name)
+                        self.log.debug(db_spawner.user_options.get('reservation', 'None') != 'None' + " - " + db_spawner.user_options.get('reservation', 'None') != '' + " - " + db_spawner.user_options.get('reservation', 'None') != None)
                         if db_spawner.user_options.get('reservation', 'None') != 'None' and db_spawner.user_options.get('reservation', 'None') != '' and db_spawner.user_options.get('reservation', 'None') != None:
+                            self.log.debug(self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE")
                             if self.get_reservations().get(db_spawner.user_options.get('system').upper(), {}).get(db_spawner.user_options.get('reservation'), {}).get('State', 'INACTIVE').upper() == "ACTIVE":
+                                self.log.debug(db_spawner.user_options.get('system').upper() in resources_filled.keys() + " - " + db_spawner.user_options.get('system').upper() in user_dic.keys())
                                 spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
                             else:
                                 spawner[db_spawner.name]['spawnable'] = False
                         else:
+                            self.log.debug(db_spawner.user_options.get('system').upper() in resources_filled.keys() + " - " + db_spawner.user_options.get('system').upper() in user_dic.keys())
                             spawner[db_spawner.name]['spawnable'] = db_spawner.user_options.get('system').upper() in resources_filled.keys() and db_spawner.user_options.get('system').upper() in user_dic.keys()
                 else:
                     spawner[db_spawner.name]['spawnable'] = True
