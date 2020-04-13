@@ -34,9 +34,9 @@ class J4J_Spawner(Spawner):
     # Variables for the options_form
     #partitions_path = Unicode(config=True, help='')
     reservation_paths = Dict(config=True, help='')
-    style_path = Unicode(config=True, help='')
     cronjobinfopath = Unicode(os.environ.get('CRONJOBINFO_PATH', ''), config=True, help='')
-    dockerimages_path = Unicode(config=True, help='')
+    spawn_config_path = Unicode(config=True, help='')
+    dashboards_path = Unicode(config=True, help='')
     project_checkbox_path = Unicode(config=True, help='')
     html_code = ""
 
@@ -560,7 +560,24 @@ class J4J_Spawner(Spawner):
             if len(maintenance) > 0:
                 self.log.debug("userserver={} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
             reservations_var = reservations(user_dic, self.reservation_paths)
-            self.html_code = create_html(user_dic, reservations_var, self.user.authenticator.resources, self.style_path, self.dockerimages_path, self.project_checkbox_path, maintenance, self.useraccs_complete)
+            with open(self.spawn_config_path, 'r') as f:
+                spawn_config = json.load(f)
+            with open(self.user.authenticator.unicore_infos, 'r') as f:
+                ux = json.load(f)
+            user_dic['HDF-Cloud'] = ux.get('HDF-Cloud', {}).get('images')
+            with open(self.dashboards_path, 'r') as f:
+                dashboards = json.load(f)
+            with open(self.project_checkbox_path, 'r') as f:
+                checkboxes = json.load(f)
+            self.html_code = create_html(spawn_config.get('firstSorted', []),
+                                         spawn_config.get('secondSorted', {}),
+                                         user_dic,
+                                         dashboards,
+                                         reservations_var,
+                                         checkboxes,
+                                         maintenance,
+                                         ux,
+                                         spawn_config.get('overallText'))
         except Exception:
             self.log.exception("Could not build html page")
             #self.log.exception("{} - Could not build html page".format(self._log_name.lower()))
@@ -569,6 +586,10 @@ class J4J_Spawner(Spawner):
 
     def options_from_form(self, form_data):
         ret = {}
+        self.log.info("Form_data: {}".format(form_data))
+        return ret
+        with open(self.user.authenticator.unicore_infos, 'r') as f:
+            ux = json.load(f)
         with open(self.project_checkbox_path, 'r') as f:
             project_cb_dict = json.load(f)
         with open(self.user.authenticator.resources, 'r') as f:

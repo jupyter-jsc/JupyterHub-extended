@@ -4,251 +4,676 @@ Created on May 17, 2019
 @author: Tim Kreuzer
 '''
 
-import json
-
-colon = '--colon--' # replace : with --colon-- in variable names
-slash = '--slash--' # "
-dot = '--dot--'     # "
-
-def create_html(user_accs, reservations, partitions_path, stylepath, dockerimagespath, project_checkbox_path, maintenance, useraccs_complete):
-    with open(partitions_path) as f:
-        resources_json = json.load(f)
-    with open(project_checkbox_path) as f:
-        project_checkbox = json.load(f)
-    html = '\n'
-    if len(maintenance) > 0:
-        html += '<h3 class="maintenance_j4j">The following systems are not available right now: {}</h3>\n'.format(', '.join(maintenance))
-    script = '\n'
-    # default values
-    user_accs_w_docker = []
-    disclaimer = {}
-    for system, accounts in user_accs.items():
-        if "!!DISCLAIMER!!" in accounts.keys():
-            disclaimer[system] = True
-            del accounts["!!DISCLAIMER!!"]            
-    for key in sorted(user_accs.keys()):
-        user_accs_w_docker.append(key)
-    if len(dockerimagespath) > 0:
-        user_accs_w_docker.append('Docker')
-    with open(dockerimagespath, 'r') as f:
-        dockerimages_wn = f.readlines()
-    dockerimages = [line.rstrip('\n') for line in dockerimages_wn]
-    docker_show = False
-    if len(user_accs) > 0:
-        system = sorted(user_accs.keys(), key=lambda s: s.casefold())[0]
-        account = sorted(user_accs.get(system).keys(), key=lambda s: s.casefold())[0]
-        project = sorted(user_accs.get(system).get(account).keys(), key=lambda s: s.casefold())[0]
-        partition = sorted(user_accs.get(system).get(account).get(project).keys())[0]
-        reservation_default = 'None'
-    else:
-        system = "Docker"
-        account = dockerimages[0]
-        project = 'None'
-        partition = 'None'
-        reservation_default = 'None'
-        docker_show = True
-    html += inputs(system, account, project, partition, reservation_default)
-    html += '<div class="j4j">\n'
-    script += function_hide_all(user_accs, reservations)
-    html += '  <div id="system___div" style="display:display">\n'
-    if not useraccs_complete:
-        html += '<center><h4>We"re looking for your accounts in the background.<br>If you"re missing accounts please refresh the page after a few seconds.</h4></center>'
-    t1, t2 = dropdown(user_accs_w_docker, 'System:', 'system')
-    html += t1
-    html += '  </div>\n'
-    script += t2
-    for system, accounts in user_accs.items():
-        t1, t2 = html_system('system___'+system, accounts, resources_json.get(system, {}), reservations.get(system, {}), project_checkbox, disclaimer.get(system, False), system==sorted(user_accs.keys(), key=lambda s: s.casefold())[0])
-        html += t1
-        script += t2
-    t1, t2 = docker('system___Docker', dockerimages, docker_show, project_checkbox)
-    html += t1
-    script += t2
-    html += '</div>\n'
-    style  = '\n'
-    style += '<style>\n'
-    with open(stylepath) as f:
-        l = f.read()
-    style += l
-    style += '</style>\n'
-    return style+''+html+'\n<script>'+script+'\n</script>\n'
-
-
-def docker(system, dockerimages, docker_show, project_checkbox):
-    html = ''
-    script = ''
-    if docker_show:
-        html += '  <div id="{div_id}___div" style="display:display">\n'.format(div_id=system)
-    else:
-        html += '  <div id="{div_id}___div" style="display:none">\n'.format(div_id=system)
-    t1, t2 = docker_dropdown(dockerimages, "Docker Image:", system)
-    html += t1
-    script += t2
-    for project_cb_name, project_cb in project_checkbox.get('DOCKER', {}).items():
-        t1, t2 = checkbox(system+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
-        html += t1
-        script += t2
-    for project_cb_name, project_cb in project_checkbox.get('ALL', {}).items():
-        if project_cb.get('docker', 'false').lower() == 'true':
-            t1, t2 = checkbox(system+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
-            html += t1
-            script += t2
-    html += '    <font size="+1">For more information look at this <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/FAQ.ipynb" target="_blank">FAQ</a></font><br>\n'
-    html += '    <font size="+1">Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a></font>\n'
-    html += '  </div>\n'
-    return html, script
-
-
-# create 5 inputs for the dropdown menus
-def inputs(system, account, project, partition, reservation, show=False):
+#def inputs(first, second, third, fourth, fifth, sixth, show=True):
+def inputs(first, show=True):
     ret = ''
-    ret += '<input autocomplete="off" id="system_input" name="system_input" value="'+system+'" style="display:'+('display' if show else 'none')+'">\n'
-    ret += '<input autocomplete="off" id="account_input" name="account_input" value="'+account+'" style="display:'+('display' if show else 'none')+'">\n'
-    ret += '<input autocomplete="off" id="project_input" name="project_input" value="'+project+'" style="display:'+('display' if show else 'none')+'">\n'
-    ret += '<input autocomplete="off" id="partition_input" name="partition_input" value="'+partition+'" style="display:'+('display' if show else 'none')+'">\n'
-    ret += '<input autocomplete="off" id="reservation_input" name="reservation_input" value="'+reservation+'" style="display:'+('display' if show else 'none')+'">\n'
+    ret += '<input autocomplete="off" id="first_input" name="first_input" value="'+first+'" style="display:'+('display' if show else 'none')+'">\n'
+    ret += '<input autocomplete="off" id="dashboard_input" name="dashboard_input" value="undefined" style="display:'+('display' if show else 'none')+'">\n'
+    ret += '<input autocomplete="off" id="second_input" name="second_input" value="undefined" style="display:'+('display' if show else 'none')+'">\n'
+    ret += '<input autocomplete="off" id="third_input" name="third_input" value="undefined" style="display:'+('display' if show else 'none')+'">\n'
+    ret += '<input autocomplete="off" id="fourth_input" name="fourth_input" value="undefined" style="display:'+('display' if show else 'none')+'">\n'
+    ret += '<input autocomplete="off" id="fifth_input" name="fifth_input" value="undefined" style="display:'+('display' if show else 'none')+'">\n'
+    ret += '<input autocomplete="off" id="sixth_input" name="sixth_input" value="undefined" style="display:'+('display' if show else 'none')+'">\n'
     return ret
 
-# jquery function: hide every div
-def function_hide_all(user_accs, reservations):
-    script = 'function hideAll(){\n'
-    for sys, dic in user_accs.items():
-        script += "  $('#system___{}___div').hide();\n".format(sys)
-        if len(dic) == 0:
-            continue
-        for account, projects in dic.items():
-            script += "  $('#system___{}___{}___div').hide();\n".format(sys, account)
-            if len(projects) == 0:
-                continue
-            for project, partitions in projects.items():
-                script += "  $('#system___{}___{}___{}___div').hide();\n".format(sys, account, project)
-                if len(partitions) == 0:
-                    continue
-                for partition in partitions.keys():
-                    script += "  $('#system___{}___{}___{}___{}___div').hide();\n".format(sys, account, project, partition)
-                    script += "  $('#system___{}___{}___{}___{}___reservation_input').prop('checked', false);\n".format(sys, account, project, partition)
-                    reservation_already_used = []
-                    reservations_length = 0
-                    for reservation_name, infos in reservations.get(sys, {}).get('Account', {}).get(account, {}).items():
-                        if partition in infos.get('PartitionName'):
-                            script += "  $('#system___{}___{}___{}___{}___reservation___{}___div').hide();\n".format(sys, account, project, partition, reservation_name)
-                            reservation_already_used.append(reservation_name)
-                            reservations_length += 1
-                    for reservation_name, infos in reservations.get(sys, {}).get('Project', {}).get(project, {}).items():
-                        if partition in infos.get('PartitionName'):
-                            if reservation_name not in reservation_already_used:
-                                script += "  $('#system___{}___{}___{}___{}___reservation___{}___div').hide();\n".format(sys, account, project, partition, reservation_name)
-                                reservations_length += 1
-                    if reservations_length > 0:
-                        script += "  $('#system___{}___{}___{}___{}___reservation___None___div').hide();\n".format(sys, account, project, partition)
-    # hide docker stuff, too
-    script += "  $('#system___{}___div').hide();\n".format('Docker')
-    script += '}\n'
-    return script
+
+def html_resource(dic, div_id):
+    text = dic.get('TEXT')
+    mima = dic.get('MINMAX')
+    mima = [str(int(float(x)/dic.get('DIVISOR', 1))) for x in mima]
+    text = text.replace('_min_', str(mima[0]))
+    text = text.replace('_max_', str(mima[1]))
+    ret  = ''
+    ret += '  <div id="{div_id}_div" style="display: none">\n'.format(div_id=div_id)
+    ret += '    <label for="{div_id}_input" id="{div_id}_label" class="resource_label_j4j">{text}</label>\n'.format(div_id=div_id, text=text)
+    default_value = dic.get('DEFAULT')
+    if default_value == '_max_':
+        default_value = mima[1]
+    elif default_value == '_min_':
+        default_value = mima[0]
+    ret += '    <input min="{}" max="{}" value="{}" class="input_j4j" name="{}_name" id="{}_input" type="number">\n'.format(mima[0], mima[1], default_value, div_id, div_id)
+    ret += '  </div>\n'
+    return ret
+
+def create_html(first_list_all, second_list_dic, user_dic, dashboards_dic, reservations_dic, checkboxes, maintenance, unicorex, overall_infos={}):
+    html = ""
+    if len(maintenance) > 0:
+        html += '<h3 class="maintenance_j4j">The following systems are not available right now: {}</h3>\n'.format(', '.join(maintenance))
+        for m in maintenance:
+            if m in second_list_dic.get('JupyterLab', []):
+                second_list_dic.get('JupyterLab', []).remove(m)
+            if m in user_dic.keys():
+                del user_dic[m]
+            for dash, infos in dashboards_dic.items():
+                if m in infos.get('system', []):
+                    infos.get('system', []).remove(m)
+    first = ""
+    first_list = []
+    for ifirst in first_list_all:
+        if len(first_list) == 0:
+            first = ifirst
+        first_list.append(ifirst)
+    if first == "Dashboard" and len(dashboards_dic.keys()) == 0:
+        if len(first_list) > 1:
+            first = first_list[1]
+            del first_list[0]
+    second = ""
+    second_list = []
+    for isecond in second_list_dic.get(first, []):
+        if isecond in user_dic.keys():
+            if len(second_list) == 0:
+                second = isecond
+            second_list.append(isecond)
+    dashboard_list = []
+    for idash in second_list_dic.get("Dashboard", []):
+        for idash_system in dashboards_dic.get(idash, {}).get('system', []):
+            if idash_system in user_dic.keys() or idash_system == 'HDF-Cloud':
+                dashboard_list.append(idash)
+                break
+    for idash, dinfos in dashboards_dic.items():
+        torm = []
+        for system in dinfos.get('system', []):
+            if system not in user_dic.keys():
+                torm.append(system)
+        for itorm in torm:
+            dinfos.get('system', []).remove(itorm)
+    second_list_dic['Dashboard'] = dashboard_list
+    second_list_dic['JupyterLab'] = second_list 
+    third_list = sorted(list(user_dic.get(second, {}).keys()), key=lambda s: s.casefold())
+    fourth_list = []
+    fifth_list = []
+    sixth_list = []
+    if len(third_list) > 0:
+        fourth_list = sorted(list(user_dic.get(second, {}).get(third_list[0], {}).keys()), key=lambda s: s.casefold())
+    if len(fourth_list) > 0:
+        fifth_list = list(user_dic.get(second, {}).get(third_list[0], {}).get(fourth_list[0], {}).keys())
+    if len(fifth_list) > 0:
+        sixth_list = list(user_dic.get(second, {}).get(third_list[0], {}).get(fourth_list[0], {}).get(fifth_list[0], {}).keys())
+        
+    html += '<div class="j4j">\n'
+    script = "<script>\n"
+    html += inputs(first_list[0] if len(first_list) > 0 else "undefined",
+                   True)
 
 
-def html_system(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show=False):
-    html  = ''
-    script = ''
-    t1, t2 = dropdowns(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show)
+    print(dashboard_list)
+    html += new_dropdown("firstdd", "Service", first_list, "onChangeDD1", "onClickDD1", True)
+    html += new_dropdown("dashboarddd", "Dashboard", dashboard_list, "onChangeDDDash", "onClickDDDash")
+    html += new_dropdown("seconddd", "System", second_list, "onChangeDD2", "onClickDD2")
+    html += new_dropdown("thirddd", "Account", third_list, "onChangeDD3", "onClickDD3")
+    html += new_dropdown("fourthdd", "Project", fourth_list, "onChangeDD4", "onClickDD4")
+    html += new_dropdown("fifthdd", "Partition", fifth_list, "onChangeDD5", "onClickDD5")
+    html += new_dropdown("sixthdd", "Reservation", sixth_list, "onChangeDD6", "onClickDD6")
+
+    t1, t2 = checkbox("reservation_cb", { "htmltext": "Show reservation info" }, "reservation")
     html += t1
     script += t2
-    return (html, script)
+    script += reservation_checkbox_script(reservations_dic)
+    for service, v0 in checkboxes.items():
+        for system, v1 in v0.items():
+            for account, v2 in v1.items():
+                for project, v3 in v2.items():
+                    for partition, v4 in v3.items():
+                        for cb_name, cb_infos in v4.items():
+                            t1, t2 = checkbox(service+"_"+system+"_"+account+"_"+project+"_"+partition+"_"+cb_name, cb_infos, cb_name)
+                            html += t1
+                            script += t2
+    script += checkbox_scripts(checkboxes)
 
-def dropdowns(system, accounts, resources_filled, reservations, project_checkbox, disclaimer, show=False):
-    html  = ''
-    script = ''
-    system_name_list = system.split('___')
-    system_name = ''
-    if len(system_name_list) == 2:
-        system_name = system_name_list[1].upper()
-    accountlist = sorted(accounts.keys(), key=lambda s: s.casefold())
-    if show:
-        html += '  <div id="{div_id}___div" style="display:display">\n'.format(div_id=system)
-    else:
-        html += '  <div id="{div_id}___div" style="display:none">\n'.format(div_id=system)
-    t1, t2 = dropdown(accountlist, 'Account:', system)
-    html += t1
-    script += t2
-    for account, projects in accounts.items():
-        projectlist = sorted(projects.keys(), key=lambda s: s.casefold())
-        if account == accountlist[0]:
-            html += '  <div id="{div_id}___div" style="display:display">\n'.format(div_id=system+'___'+account)
-        else:
-            html += '  <div id="{div_id}___div" style="display:none">\n'.format(div_id=system+'___'+account)
-        t1, t2 = dropdown(projectlist, 'Project:', system+'___'+account)
-        html += t1
-        script += t2
-        for project, partitions in projects.items():
-            partitions_supported = {}
-            for part in partitions.keys():
-                if part in resources_filled.keys():
-                    partitions_supported[part] = partitions.get(part)
-            partitionlist = sorted(partitions_supported.keys())
-            if len(partitionlist) == 0:
-                continue
-            if project==projectlist[0] and account==accountlist[0]:
-                html += '  <div id="{div_id}___div" style="display:display">\n'.format(div_id=system+'___'+account+'___'+project)
-            else:
-                html += '  <div id="{div_id}___div" style="display:none">\n'.format(div_id=system+'___'+account+'___'+project)
-            t1, t2 = dropdown(partitionlist, 'Partition:', system+'___'+account+'___'+project)
-            html += t1
-            script += t2
-            for partition, resources in partitions_supported.items():
-                if partition==partitionlist[0] and project==projectlist[0] and account==accountlist[0]:
-                    html += '<div id="{}___div" style="display:display">\n'.format(system+'___'+account+'___'+project+'___'+partition)
-                else:
-                    html += '<div id="{}___div" style="display:none">\n'.format(system+'___'+account+'___'+project+'___'+partition)
-                reservation_for_partition = {}
-                for reservation_name, infos in reservations.get('Account', {}).get(account, {}).items():
-                    if infos.get('PartitionName').lower() == partition:
-                        reservation_for_partition[reservation_name] = infos
-                for reservation_name, infos in reservations.get('Project', {}).get(project, {}).items():
-                    if infos.get('PartitionName').lower() == partition and reservation_name not in reservation_for_partition.keys():
-                        reservation_for_partition[reservation_name] = infos
-                reservationlist = sorted(reservation_for_partition.keys())
-                if len(reservationlist) > 0:
-                    reservationlist.insert(0, 'None')
-                    t1, t2 = dropdown(reservationlist, 'Reservation:', system+'___'+account+'___'+project+'___'+partition, reservation_for_partition)
-                    html += t1
-                    script += t2
-                    t1, t2 = checkbox(system+'___'+account+'___'+project+'___'+partition+'___reservation', "Show reservation info", "Show more information for your reservations")
-                    html += t1
-                    script += t2
-                    for s in reservationlist:
-                        t1,t2 = reservationInfo(system+'___'+account+'___'+project+'___'+partition+'___reservation___'+s, reservation_for_partition.get(s))
-                        html += t1
-                for resource, infos in resources.items():
-                    html += html_resource(infos, system+'___'+account+'___'+project+'___'+partition+'___'+resource)
-                for project_cb_name, project_cb in project_checkbox.get(system_name, {}).items():
-                    if partition in project_cb.get('partition', []):
-                        t1, t2 = checkbox(system+'___'+account+'___'+project+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
-                        html += t1
-                        script += t2
-                html += '</div>\n'
-                
-            for project_cb_name, project_cb in project_checkbox.get(system_name, {}).items():
-                if project in project_cb.get('projects', []):
-                    t1, t2 = checkbox(system+'___'+account+'___'+project+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
-                    html += t1
-                    script += t2
-            html += '</div>\n'
-        html += '</div>\n'
-    for project_cb_name, project_cb in project_checkbox.get('ALL', {}).items():
-        t1, t2 = checkbox(system+'___'+project_cb_name, project_cb.get('htmltext', 'htmltext'), project_cb.get('info', 'info'), project_cb.get('noqm', 'false').lower()=='true')
-        html += t1
-        script += t2
-
-    html += '  <p><font size="+1">Overview of installed <a href="https://nbviewer.jupyter.org/github/kreuzert/Jupyter-JSC/blob/master/Extensions.ipynb" target="_blank">extensions</a>\n'
-    html += '  </font></p>'
+    reservations = {}
+    for system, reservation_types in reservations_dic.items():
+        for reservation_infos in reservation_types.values():
+            for reservation_values in reservation_infos.values():
+                for reservation_name, reservation_value in reservation_values.items():
+                    if not system in reservations.keys():
+                        reservations[system] = {}
+                    if not reservation_name in reservations.get(system, {}).keys():
+                        reservations[system][reservation_name] = reservation_value
+    for system, reservation in reservations.items():
+        html += reservationInfo("reservation_{}_{}".format(system, "None"), {}, False)
+        for name, infos in reservation.items():
+            html += reservationInfo("reservation_{}_{}".format(system, name), infos, False)
+    
+    nodes =  {"MINMAX": [1, 256], "TEXT": "Nodes [_min_, _max_]", "DIVISOR": 1, "DEFAULT": 1}
+    runtime = {"MINMAX": ["60", "86400"], "TEXT": "Runtime (min) [_min_, _max_]", "DIVISOR": 60, "DEFAULT": 30}
+    gpus = {"MINMAX": [1, 4], "TEXT": "GPUs [_min_, _max_]", "DIVISOR": 1, "DEFAULT": "_max_"}
+    cpus_per_node= {"MINMAX": [1, 48], "TEXT": "CPUs per node [_min_, _max_]", "DIVISOR": 1, "DEFAULT": "24"}
+    html += html_resource(nodes, 'resource_nodes')
+    html += html_resource(runtime, 'resource_runtime')
+    html += html_resource(gpus, 'resource_gpus')
+    html += html_resource(cpus_per_node, 'resource_cpus_per_node')
+    script += resource_scripts(["nodes", "runtime", "gpus", "cpus_per_node"])   
+    for dash, dinfos in dashboards_dic.items():
+        if 'readmore' in dinfos.keys():
+            html += dashinfo_text(dash, dinfos.get('readmore', []))
+    html += system_readmore(unicorex)
+    html += overall_readmore(overall_infos)
     html += '</div>\n'
-    return html, script
 
-def reservationInfo(div_id, reservation):
-    html = '<div id="{}___div" class="reservation_info_j4j" style="display: none">\n'.format(div_id)
+    script += onchange_dd6(user_dic, reservations_dic)
+    script += onchange_dd5(user_dic, reservations_dic)
+    script += onchange_dd4(user_dic, dashboards_dic)
+    script += onchange_dd3(user_dic)
+    script += onchange_dd2(user_dic)
+    script += onchange_dddash(user_dic, dashboard_list, dashboards_dic)
+    script += onchange_dd1(first_list, second_list_dic)
+    script += onclick_dd6()
+    script += onclick_dd5()
+    script += onclick_dd4()
+    script += onclick_dd3()
+    script += onclick_dd2()
+    script += onclick_dddash()
+    script += onclick_dd1()
+    script += dashinfo_hide(dashboards_dic.keys())
+    script += init_script()
+    script += system_readmore_hide(unicorex)
+    script += "</script>\n"
+
+    html += script
+    return html
+
+    html += overall_readmore(overall_infos)
+def overall_readmore(overall_infos):
+    ret = ""
+    for name, infos in overall_infos.items():
+        ret += "<div style='display: block' id='readmore_overall_{}_div'>\n".format(name)
+        for readmore in infos.get('readmore', []):
+            ret += "  <p>{}</p>\n".format(readmore)
+        ret += "</div>\n"
+    return ret
+    
+
+def system_readmore(unicorex):
+    ret = ""
+    for system, infos in unicorex.items():
+        ret += "<div style='display: none' id='readmore_system_{}_div'>\n".format(system)
+        for readmore in infos.get('readmore', []):
+            ret += "  <p>{}</p>\n".format(readmore)
+        ret += "</div>\n"
+    return ret
+
+def system_readmore_hide(unicorex):
+    ret = ""
+    ret += "function readmore_system_hide(){\n"
+    for system in unicorex.keys():
+        ret += "  if( $('#readmore_system_" + system + "_div').length ){\n"
+        ret += "    $('#readmore_system_" + system + "_div').hide();\n"
+        ret += "  }\n"
+    ret += "}\n"
+    return ret
+
+def dashinfo_hide(dashboards):
+    ret = ""
+    ret += "function dash_text_hide(){\n"
+    for dash in dashboards:
+        ret += "  $('#dashinfo_{}_text').hide();\n".format(dash.replace(" ", "_"))
+    ret += "}\n"
+    return ret
+
+def dashinfo_text(div_id, texts):
+    ret = ""
+    ret += "<div style='display:none' id='dashinfo_{}_text'>\n".format(div_id.replace(" ", "_"))
+    for text in texts: 
+        ret += '<p>{text}</p>\n'.format(div_id=div_id, text=text)
+    ret += "</div>\n"
+    return ret
+
+def resource_scripts(l):
+    ret = ""
+    ret += "function resources_hide() {\n"
+    for i in l:
+        ret += "  $('#resource_{}_div').hide();\n".format(i)
+    ret += "}\n"
+    return ret
+
+def checkbox_scripts(checkboxes):
+    ret = ""
+    ret += "function checkboxes_hide() {\n"
+    for service, v0 in checkboxes.items():
+        for system, v1 in v0.items():
+            for account, v2 in v1.items():
+                for project, v3 in v2.items():
+                    for partition, v4 in v3.items():
+                        for cb_name in v4.keys():
+                            ret += "  $('#{}_{}_{}_{}_{}_{}').hide();\n".format(service, system, account, project, partition, cb_name)
+    ret += "}\n"
+    ret += "function checkboxes_jlab() {\n"
+    ret += "  var first = $('#first_input').val();\n"
+    ret += "  var second = $('#second_input').val();\n"
+    ret += "  var third = $('#third_input').val();\n"
+    ret += "  var fourth = $('#fourth_input').val();\n"
+    ret += "  var fifth = $('#fifth_input').val();\n"
+    for service, v0 in checkboxes.items():
+        for system, v1 in v0.items():
+            for account, v2 in v1.items():
+                for project, v3 in v2.items():
+                    for partition, v4 in v3.items():
+                        for cb_name in v4.keys():
+                            ret += "  if ( (first == \""+service+"\" || \"ALL\" == \""+service+"\") ){\n"
+                            ret += "    if ( (second == \""+system+"\" || \"ALL\" == \""+system+"\") ){\n"
+                            ret += "      if ( (third == \""+account+"\" || \"ALL\" == \""+account+"\") ){\n"
+                            ret += "        if ( (fourth == \""+project+"\" || \"ALL\" == \""+project+"\") ){\n"
+                            ret += "          if ( (fifth == \""+partition+"\" || \"ALL\" == \""+partition+"\") ){\n"
+                            ret += "            $('#{}_{}_{}_{}_{}_{}').show();\n".format(service, system, account, project, partition, cb_name)
+                            ret += "          }\n"
+                            ret += "        }\n"
+                            ret += "      }\n"
+                            ret += "    }\n"
+                            ret += "  }\n"
+    ret += "}\n"
+    return ret
+    
+
+def reservation_checkbox_script(reservation_dic):
+    ret = ""
+    ret += "function reservation_hide_all() {\n"
+    for system, sub in reservation_dic.items():
+        for subsub in sub.get('Account', {}).values():
+            for name in subsub.keys():
+                ret += "  $('#reservation_{}_{}_div').hide();\n".format(system, name)
+    for system, sub in reservation_dic.items():
+        for subsub in sub.get('Project', {}).values():
+            for name in subsub.keys():
+                ret += "  $('#reservation_{}_{}_div').hide();\n".format(system, name)
+    ret += "  document.getElementById('reservation_cb_input').checked = false;\n"
+    ret += "  $('#reservation_cb').hide();\n"
+    ret += "}\n"
+    ret += "function reservation() {\n"
+    ret += "  var res = $('#sixth_input').val();\n"
+    ret += "  var system = $('#second_input').val();\n"
+    ret += "  if ( document.getElementById('reservation_cb_input').checked ) {\n"
+    ret += "    $('#reservation_'+system+'_'+res+'_div').show();\n"
+    ret += "  } else { \n"
+    ret += "    $('#reservation_'+system+'_'+res+'_div').hide();\n"
+    ret += "  }\n"
+    ret += "}\n"
+    return ret
+
+def onclick_dd1():
+    ret = ""
+    ret += "function onClickDD1(value) {\n"
+    ret += '  var old = $("#first_input").val();\n'
+    ret += '  if ( old == value ) {\n'
+    ret += '    return;\n'
+    ret += '  }\n'
+    ret += '  dash_text_hide();\n'
+    ret += '  readmore_system_hide();\n'
+    ret += '  reservation_hide_all();\n'
+    ret += '  checkboxes_hide();\n'
+    ret += '  resources_hide();\n'
+    ret += '  $("#sixthdd_div").hide();\n'
+    ret += '  $("#fifthdd_div").hide();\n'
+    ret += '  $("#fourthdd_div").hide();\n'
+    ret += '  $("#thirddd_div").hide();\n'
+    ret += '  $("#seconddd_div").hide();\n'
+    ret += '  $("#dashboarddd_div").hide();\n'
+    ret += '  $("#sixth_input").val("undefined");\n'
+    ret += '  $("#fifth_input").val("undefined");\n'
+    ret += '  $("#fourth_input").val("undefined");\n'
+    ret += '  $("#third_input").val("undefined");\n'
+    ret += '  $("#second_input").val("undefined");\n'
+    ret += '  $("#dashboard_input").val("undefined");\n'
+    ret += '  $("#firstdd").val(value).trigger("change");\n'
+    ret += "}\n"
+    return ret
+
+def onclick_dddash():
+    ret = ""
+    ret += "function onClickDDDash(value) {\n"
+    ret += '  var old = $("#dashboard_input").val();\n'
+    ret += '  if ( old == value ) {\n'
+    ret += '    return;\n'
+    ret += '  }\n'
+    ret += '  dash_text_hide();\n'
+    ret += '  readmore_system_hide();\n'
+    ret += '  reservation_hide_all();\n'
+    ret += '  checkboxes_hide();\n'
+    ret += '  resources_hide();\n'
+    ret += '  $("#sixthdd_div").hide();\n'
+    ret += '  $("#fifthdd_div").hide();\n'
+    ret += '  $("#fourthdd_div").hide();\n'
+    ret += '  $("#thirddd_div").hide();\n'
+    ret += '  $("#seconddd_div").hide();\n'
+    ret += '  $("#sixth_input").val("undefined");\n'
+    ret += '  $("#fifth_input").val("undefined");\n'
+    ret += '  $("#fourth_input").val("undefined");\n'
+    ret += '  $("#third_input").val("undefined");\n'
+    ret += '  $("#second_input").val("undefined");\n'
+    ret += '  $("#dashboarddd").val(value).trigger("change");\n'
+    ret += "}\n"
+    return ret
+
+def onclick_dd2():
+    ret = ""
+    ret += "function onClickDD2(value) {\n"
+    ret += '  var old = $("#second_input").val();\n'
+    ret += '  if ( old == value ) {\n'
+    ret += '    return;\n'
+    ret += '  }\n'
+    ret += '  reservation_hide_all();\n'
+    ret += '  readmore_system_hide();\n'
+    ret += '  checkboxes_hide();\n'
+    ret += '  resources_hide();\n'
+    ret += '  $("#sixthdd_div").hide();\n'
+    ret += '  $("#fifthdd_div").hide();\n'
+    ret += '  $("#fourthdd_div").hide();\n'
+    ret += '  $("#thirddd_div").hide();\n'
+    ret += '  $("#sixth_input").val("undefined");\n'
+    ret += '  $("#fifth_input").val("undefined");\n'
+    ret += '  $("#fourth_input").val("undefined");\n'
+    ret += '  $("#third_input").val("undefined");\n'
+    ret += '  $("#seconddd").val(value).trigger("change");\n'
+    ret += "}\n"
+    return ret
+
+def onclick_dd3():
+    ret = ""
+    ret += "function onClickDD3(value) {\n"
+    ret += '  var old = $("#third_input").val();\n'
+    ret += '  if ( old == value ) {\n'
+    ret += '    return;\n'
+    ret += '  }\n'
+    ret += '  reservation_hide_all();\n'
+    ret += '  checkboxes_hide();\n'
+    ret += '  resources_hide();\n'
+    ret += '  $("#sixthdd_div").hide();\n'
+    ret += '  $("#fifthdd_div").hide();\n'
+    ret += '  $("#fourthdd_div").hide();\n'
+    ret += '  $("#sixth_input").val("undefined");\n'
+    ret += '  $("#fifth_input").val("undefined");\n'
+    ret += '  $("#fourth_input").val("undefined");\n'
+    ret += '  $("#thirddd").val(value).trigger("change");\n'
+    ret += "}\n"
+    return ret
+
+def onclick_dd4():
+    ret = ""
+    ret += "function onClickDD4(value) {\n"
+    ret += '  var old = $("#fourth_input").val();\n'
+    ret += '  if ( old == value ) {\n'
+    ret += '    return;\n'
+    ret += '  }\n'
+    ret += '  reservation_hide_all();\n'
+    ret += '  checkboxes_hide();\n'
+    ret += '  resources_hide();\n'
+    ret += '  $("#sixthdd_div").hide();\n'
+    ret += '  $("#fifthdd_div").hide();\n'
+    ret += '  $("#sixth_input").val("undefined");\n'
+    ret += '  $("#fifth_input").val("undefined");\n'
+    ret += '  $("#fourthdd").val(value).trigger("change");\n'
+    ret += "}\n"
+    return ret
+
+def onclick_dd5():
+    ret = ""
+    ret += "function onClickDD5(value) {\n"
+    ret += '  var old = $("#fifth_input").val();\n'
+    ret += '  if ( old == value ) {\n'
+    ret += '    return;\n'
+    ret += '  }\n'
+    ret += '  reservation_hide_all();\n'
+    ret += '  checkboxes_hide();\n'
+    ret += '  resources_hide();\n'
+    ret += '  $("#sixthdd_div").hide();\n'
+    ret += '  $("#sixth_input").val("undefined");\n'
+    ret += '  $("#fifthdd").val(value).trigger("change");\n'
+    ret += "}\n"
+    return ret
+
+def onclick_dd6():
+    ret = ""
+    ret += "function onClickDD6(value) {\n"
+    ret += '  var old = $("#sixth_input").val();\n'
+    ret += '  if ( old == value ) {\n'
+    ret += '    return;\n'
+    ret += '  }\n'
+    ret += '  reservation_hide_all();\n'
+    ret += '  $("#sixthdd").val(value).trigger("change");\n'
+    ret += "}\n"
+    return ret
+
+def onchange_dd6(user_dic, reservations_dic={}):
+    ret = ""
+    ret += "function onChangeDD6() {\n"
+    ret += "  var first = $('#firstdd').val();\n"
+    ret += "  var second = $('#seconddd').val();\n"
+    ret += "  var third = $('#thirddd').val();\n"
+    ret += "  var fourth = $('#fourthdd').val();\n"
+    ret += "  var fifth = $('#fifthdd').val();\n"
+    ret += "  var value = $('#sixthdd').val();\n"
+    ret += "  $('#sixth_input').val(value);\n"
+    ret += "  $('#sixthdd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
+    ret += "  if ( value != \"None\" ) {\n"
+    ret += "    $('#reservation_cb').show();\n"
+    ret += "  }\n"
+    ret += "}\n"
+    return ret
+
+def onchange_dd5(user_dic, reservations_dic={}):
+    ret = ""
+    ret += "function onChangeDD5() {\n"
+    ret += "  var first = $('#firstdd').val();\n"
+    ret += "  var second = $('#seconddd').val();\n"
+    ret += "  var third = $('#thirddd').val();\n"
+    ret += "  var fourth = $('#fourthdd').val();\n"
+    ret += "  var value = $('#fifthdd').val();\n"
+    ret += "  $('#fifth_input').val(value);\n"
+    ret += '  checkboxes_jlab();\n'
+    ret += "  $('#fifthdd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
+    for second, rest2 in user_dic.items():
+        ret += '    if ( second == "'+ second +'" ) {\n'
+        for third, rest3 in rest2.items():
+            ret += '      if ( third == "'+ third +'" ) {\n'
+            for fourth, rest4 in rest3.items():
+                ret += '        if ( fourth == "'+ fourth +'" ) {\n'
+                for fifth in rest4.keys():
+                    ret += '          if ( value == "' + fifth + '" ) {\n'
+                    reservations = []
+                    if not fifth == "LoginNode":
+                        for name in reservations_dic.get(second, {}).get('Account', {}).get(third, {}).keys():
+                            partition = reservations_dic.get(second, {}).get('Account', {}).get(third, {}).get(name, {}).get('PartitionName', "")
+                            if name not in reservations:
+                                if partition == '(null)' or partition == fifth:
+                                    reservations.append(name)
+                        for name in reservations_dic.get(second, {}).get('Project', {}).get(fourth, {}).keys():
+                            partition = reservations_dic.get(second, {}).get('Project', {}).get(fourth, {}).get(name, {}).get('PartitionName', "")
+                            if name not in reservations:
+                                if partition == '(null)' or partition == fifth:
+                                    reservations.append(name)
+                    for resource_name, res_info in user_dic.get(second, {}).get(third, {}).get(fourth, {}).get(fifth, {}).items():
+                        minmax = res_info.get('MINMAX')
+                        mini = int(minmax[0])
+                        maxi = int(minmax[1])
+                        mini = int(mini / res_info.get('DIVISOR'))
+                        maxi = int(maxi / res_info.get('DIVISOR'))
+                        default = res_info.get('DEFAULT')
+                        if default == "_max_":
+                            default = maxi
+                        elif default == "_min_":
+                            default = mini
+                        text = res_info.get('TEXT').replace('_min_', "{}".format(mini)).replace('_max_', "{}".format(maxi))
+                        ret += "            $('#resource_{}_div').show();\n".format(resource_name.lower())
+                        ret += "            $('#resource_"+ resource_name.lower() +"_input').attr({\"max\": "+ "{}".format(minmax[1]) +", \"min\": "+ "{}".format(minmax[0]) +", \"value\": "+ "{}".format(default) +" });\n"
+                        ret += "            $('#resource_"+ resource_name.lower() +"_label').text(\""+text+"\");\n"
+                    if len(reservations) > 0:
+                        reservations.insert(0, "None")
+                        ret += '            $("#sixthdd_ul").html("");\n'
+                        for name in reservations:
+                            if reservations_dic.get(second, {}).get('Account', {}).get(third, {}).get(name, {}).get('State', "") == "INACTIVE" or reservations_dic.get(second, {}).get('Project', {}).get(fourth, {}).get(name, {}).get('State', "") == "INACTIVE":
+                                ret += '            $("#sixthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" style="text-decoration:line-through; color:red" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD6", div_prefix="sixthdd", key=name)
+                            else:
+                                ret += '            $("#sixthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD6", div_prefix="sixthdd", key=name)
+                        ret += '            $("#sixthdd").val("{}").trigger("change");\n'.format(reservations[0])
+                        ret += "            $('#sixthdd_div').show();\n"
+                    ret += '          }\n'
+                ret += "        }\n"
+            ret += "      }\n"
+        ret += "    }\n"
+    ret += "}\n"
+    return ret
+
+def onchange_dd4(user_dic, dashboards_dic):
+    ret = ""
+    ret += "function onChangeDD4() {\n"
+    ret += "  var first = $('#firstdd').val();\n"
+    ret += "  var dashboard = $('#dashboarddd').val();\n"
+    ret += "  var second = $('#seconddd').val();\n"
+    ret += "  var third = $('#thirddd').val();\n"
+    ret += "  var value = $('#fourthdd').val();\n"
+    ret += "  $('#fourth_input').val(value);\n"
+    ret += "  $('#fourthdd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
+    for second, rest2 in user_dic.items():
+        ret += '    if ( second == "'+ second +'" ) {\n'
+        for third, rest3 in rest2.items():
+            ret += '      if ( third == "'+ third +'" ) {\n'
+            for fourth, rest4 in rest3.items():
+                if len(rest4.keys()) > 0:
+                    for dash, dinfos in dashboards_dic.items():
+                        if dinfos.get('onlinerequired', 'false').lower() == 'true':
+                            ret += '        if ( first == "Dashboard" && dashboard == "' + dash + '" ) {\n'
+                            ret += "          $('#fifth_input').val('LoginNode');\n"
+                            ret += '          return;\n'
+                            ret += '        }\n'
+                    ret += '        if ( value == "'+ fourth +'" ) {\n'
+                    rest4_list = []
+                    if "LoginNode" in rest4.keys():
+                        rest4_list.append("LoginNode")
+                    for i in sorted(rest4.keys(), key=lambda s: s.casefold()):
+                        if not i == "LoginNode":
+                            rest4_list.append(i)
+                    ret += '          $("#fifthdd_ul").html("");\n'
+                    for name in rest4_list:
+                        ret += '          $("#fifthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD5", div_prefix="fifthdd", key=name)
+                    ret += '          $("#fifthdd").val("{}").trigger("change");\n'.format(rest4_list[0])
+                    ret += "          $('#fifthdd_div').show();\n"
+                    ret += "        }\n"
+            ret += "      }\n"
+        ret += "    }\n"
+    ret += "}\n"
+    return ret
+
+def onchange_dd3(user_dic):
+    ret = ""
+    ret += "function onChangeDD3() {\n"
+    ret += "  var first = $('#firstdd').val();\n"
+    ret += "  var second = $('#seconddd').val();\n"
+    ret += "  var value = $('#thirddd').val();\n"
+    ret += "  $('#third_input').val(value);\n"
+    ret += "  $('#thirddd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
+    for second, rest2 in user_dic.items():
+        ret += '    if ( second == "'+ second +'" ) {\n'
+        for third, rest3 in rest2.items():
+            if len(rest3.keys()) > 0:
+                ret += '      if ( value == "'+ third +'" ) {\n'
+                ret += '        $("#fourthdd_ul").html("");\n'
+                for name in sorted(rest3.keys(), key=lambda s: s.casefold()):
+                    ret += '        $("#fourthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD4", div_prefix="fourthdd", key=name)
+                ret += '        $("#fourthdd").val("{}").trigger("change");\n'.format(sorted(rest3.keys(), key=lambda s: s.casefold())[0])
+                ret += "        $('#fourthdd_div').show();\n"
+                ret += "      }\n"
+        ret += "    }\n"
+    ret += "}\n"
+    return ret
+
+def onchange_dd2(user_dic):
+    ret = ""
+    ret += "function onChangeDD2() {\n"
+    ret += "  var first = $('#firstdd').val();\n"
+    ret += "  var value = $('#seconddd').val();\n"
+    ret += "  $('#second_input').val(value);\n"
+    ret += "  $('#seconddd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
+    for second, rest2 in user_dic.items():
+        ret += '    if ( value == "'+ second +'" ) {\n'
+        ret += "      if( $('#readmore_system_" + second + "_div').length ){\n"
+        ret += "        $('#readmore_system_{}_div').show();\n".format(second)
+        ret += "      }\n"
+        ret += '      if ( first != "Dashboard" || value != "HDF-Cloud" ) {\n'
+        if second == 'HDF-Cloud':
+            ret += "        $('#thirddd_label').html('Image');\n" 
+        else:
+            ret += "        $('#thirddd_label').html('Account');\n" 
+        ret += '        $("#thirddd_ul").html("");\n'
+        for name in sorted(rest2.keys(), key=lambda s: s.casefold()):
+            ret += '        $("#thirddd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD3", div_prefix="thirddd", key=name)
+        ret += '        $("#thirddd").val("{}").trigger("change");\n'.format(sorted(rest2.keys(), key=lambda s: s.casefold())[0])
+        ret += "        $('#thirddd_div').show();\n"
+        ret += "      }\n"
+        ret += "    }\n"
+    ret += "}\n"
+    return ret
+
+def onchange_dddash(user_dic, dashboard_list, dashboard_dic):
+    ret = ""
+    ret += "function onChangeDDDash() {\n"
+    ret += "  var first = $('#firstdd').val();\n"
+    ret += "  var value = $('#dashboarddd').val();\n"
+    ret += "  $('#dashboard_input').val(value);\n"
+    ret += "  $('#dashboarddd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
+    for dash_name in dashboard_list:
+        ret += '  if ( value == "'+ dash_name +'" ) {\n'
+        ret += '    var tmp = "dashinfo_"+value+"_text";\n'
+        ret += '    tmp = tmp.replace(" ", "_");\n'
+        ret += "    if( $('#'+tmp+'').length ){\n"
+        ret += "      $('#'+tmp+'').show();\n"
+        ret += "    }\n"
+        ret += '    $("#seconddd_ul").html("");\n'
+        for second in dashboard_dic.get(dash_name, {}).get('system', []):
+            ret += '    $("#seconddd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD2", div_prefix="seconddd", key=second)
+        ret += '    $("#seconddd").val("{}").trigger("change");\n'.format(dashboard_dic.get(dash_name, {}).get('system', [""])[0])
+        ret += "    $('#seconddd_div').show();\n"
+        ret += "    if( $('#dashinfo_" + dash_name + "_text').length ){\n"
+        ret += "      $('#dashinfo_" + dash_name + "_text').show();\n"
+        ret += "    }\n"
+        ret += "  }\n"
+    ret += "}\n"
+    return ret
+
+def onchange_dd1(first_list, second_list_dic):
+    ret = ""
+    ret += "function onChangeDD1() {\n"
+    ret += "  var value = $('#firstdd').val();\n"
+    ret += "  $('#first_input').val(value);\n"
+    ret += "  $('#firstdd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
+    for first in first_list:
+        ret += '  if ( value == "'+ first +'" ) {\n'
+        ret += "    $('#seconddd_label').html(\"System\");\n"
+        ret += "    $('#thirddd_label').html(\"Account\");\n"
+        ret += "    $('#fourthdd_label').html(\"Project\");\n"
+        ret += "    $('#fifthdd_label').html(\"Partition\");\n"
+        ret += "    $('#sixthdd_label').html(\"Reservation\");\n"
+        if first == "Dashboard":
+            ret += "    $('#seconddd_div').hide();\n"
+            ret += '    $("#dashboarddd_ul").html("");\n'
+            for name in second_list_dic.get(first):
+                ret += '    $("#dashboarddd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDDDash", div_prefix="dashboarddd", key=name)
+            ret += '    $("#dashboarddd").val("{}").trigger("change");\n'.format(second_list_dic.get(first)[0])
+            ret += "    $('#dashboarddd_div').show();\n"
+        else:
+            ret += "    $('#dashboarddd_div').hide();\n"
+            ret += '    $("#seconddd_ul").html("");\n'
+            for name in second_list_dic.get(first):
+                ret += '    $("#seconddd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD2", div_prefix="seconddd", key=name)
+            ret += '    $("#seconddd").val("{}").trigger("change");\n'.format(second_list_dic.get(first)[0])
+            ret += "    $('#seconddd_div').show();\n"
+        ret += "  }\n"
+    ret += "}\n"
+    return ret
+
+def init_script():
+    ret = ""
+    ret += "$(document).ready(function() {\n"
+    ret += '  $("#firstdd").val("JupyterLab").trigger("change");\n'
+    ret += "});\n"
+    return ret
+
+def reservationInfo(div_id, reservation, show):
+    if show:
+        html = '<div id="{}_div" class="reservation_info_j4j" style="display: display">\n'.format(div_id)
+    else:
+        html = '<div id="{}_div" class="reservation_info_j4j" style="display: none">\n'.format(div_id)
     html += '  <table class="table_j4j">\n'
     html += '    <tr class="table_tr_j4j">\n'
-    tmp = div_id.split('___')
+    tmp = div_id.split('_')
     name = tmp[len(tmp)-1]
     html += '      <th colspan="2" class="table_th_j4j">Reservation: {}</th>\n'.format(name)
     html += '    </tr>\n'
@@ -279,200 +704,74 @@ def reservationInfo(div_id, reservation):
             html += '    </tr>\n'
     html += '  </table>\n'
     html += '</div>\n'
-    return html, ''
+    return html
 
+def new_dropdown(div_prefix, label_text, first_values, onChange, onClick, show=False):
+    html = '  <div id="{div_prefix}_div" style="display:{show}">\n'.format(div_prefix=div_prefix, show = "display" if len(first_values) > 0 and show else "none" )
+    html += '    <div class="dropdown_j4j">\n'
+    html += '      <label for="{div_prefix}" id="{div_prefix}_label" class="bg-primary text-center label_j4j">{text}</label>\n'.format(div_prefix=div_prefix, text=label_text)
+    html += '      <div class="btn-group btn_group_j4spawner">\n'
+    html += '        <button type="button" onchange="{onchange}()" class="btn btn-primary dropdown-toggle form-control button_j4j" data-toggle="dropdown" aria-expanded="false" id="{div_prefix}" name="{div_prefix}_name" value="{default}">\n'.format(onchange=onChange, div_prefix=div_prefix, default= first_values[0] if len(first_values) > 0 else "")
+    if len(first_values) > 0:
+        html += '          {}\n'.format(first_values[0])
+    html += '          <span class="caret"></span>\n'
+    html += '        </button>\n'
+    html += '        <ul class="dropdown-menu" name="uid" id="{}_ul">\n'.format(div_prefix)
+    for key in first_values:
+        html += '          <li><a href="#" onclick="{onclick}(\'{key}\')" id="{div_prefix}_{key}">{key}</a></li>\n'.format(onclick=onClick, div_prefix=div_prefix, key=key)
+    html += '        </ul>\n'
+    html += '      </div>\n'
+    html += '    </div>\n'
+    html += '  </div>\n'
+    return html
 
-def checkbox(div_id, text, tooltip, noqm=False):
+def checkbox(div_id, cb_infos, onClick):
+    text = cb_infos.get('htmltext', 'htmltext')
+    tooltip = cb_infos.get('info', '')
+    noqm = cb_infos.get('noqm', 'false').lower()=='true'
     html = ''
-    html += '  <div id="{}" class="checkbox_div_j4j">\n'.format(div_id)
+    script = ''
+    html += '  <div id="{}" class="checkbox_div_j4j" style="display: none">\n'.format(div_id)
     if noqm:
-        html += '    <li class="bg-primary list-group-item checkbox_li_j4j">{text}&nbsp;<img class="qm_j4j" id="{div_id}_image" src="/static/images/noqm.png" data-original-title="" title="" height="20">\n'.format(div_id=div_id, text=text)
+        html += '    <li class="bg-primary list-group-item checkbox_li_j4j">{text}&nbsp;<img class="qm_j4j" id="{div_id}_image" src="https://jupyter-jsc.fz-juelich.de/hub/static/images/noqm.png" data-original-title="" title="" height="20">\n'.format(div_id=div_id, text=text)
     else:
-        html += '    <li class="bg-primary list-group-item checkbox_li_j4j">{text}&nbsp;<img class="qm_j4j" id="{div_id}_image" src="/static/images/qm.png" data-original-title="" title="" height="20">\n'.format(div_id=div_id, text=text)
+        html += '    <li class="bg-primary list-group-item checkbox_li_j4j">{text}&nbsp;<img class="qm_j4j" id="{div_id}_image" src="https://jupyter-jsc.fz-juelich.de/hub/static/images/qm.png" data-original-title="" title="" height="20"><span id="{div_id}_tooltip" style="z-index: 5; padding: 5px; position: absolute; top: 43px; left:0px; background: #eeeeee; display: none">{tooltip}</span>\n'.format(div_id=div_id, text=text, tooltip=tooltip)
+        if len(tooltip) > 0:
+            script += 'document.getElementById("'+ div_id+'_image").addEventListener("mouseover", function() { document.getElementById("'+div_id+'_tooltip").style.display = "block"; });\n'
+            script += 'document.getElementById("'+ div_id+'_image").addEventListener("mouseout", function() { document.getElementById("'+div_id+'_tooltip").style.display = "none"; });\n'
     html += '      <div class="material-switch pull-right" style="">\n'
-    html += '        <input id="{div_id}_input" name="{div_id}_name" class="form-control" type="checkbox">\n'.format(div_id=div_id)
+    html += '        <input id="{div_id}_input" name="{div_id}_name" onClick="{onclick}()" class="form-control" type="checkbox">\n'.format(div_id=div_id, onclick=onClick)
     html += '        <label for="{div_id}_input" class="label-primary"></label>\n'.format(div_id=div_id)
     html += '      </div>\n'
     html += '    </li>\n'
     html += '  </div>\n'
-    script = ''
-    if not noqm:
-        script += "jQuery('#"+div_id+"_image').ready(function(e){\n"
-        script += "  $('#"+div_id+"_image').tooltip({title: '"+tooltip+"', delay: 0, placement: 'bottom', html: true});\n"
-        script += "});\n"
-    if '___reservation' == div_id[-len('___reservation'):]:
-        script += "$('#"+div_id+"_input').click(function() {\n"
-        script += "  var reservation = $('#reservation_input').val();\n"
-        script += "  $('#"+div_id+"___'+reservation+'___div').toggle(this.checked);\n"
-        script += "});\n"
-    return html, script
-
-def html_resource(dic, div_id):
-    text = dic.get('TEXT')
-    mima = dic.get('MINMAX')
-    mima = [str(int(float(x)/dic.get('DIVISOR', 1))) for x in mima]
-    text = text.replace('_min_', str(mima[0]))
-    text = text.replace('_max_', str(mima[1]))
-    ret  = ''
-    #ret += '  <label for="{}_input" class="bg-primary text-center">{}</label>\n'.format(div_id, text)
-    ret += '  <div>\n'
-    ret += '    <label for="{}_input" class="resource_label_j4j">{}</label>\n'.format(div_id, text)
-    default_value = dic.get('DEFAULT')
-    if default_value == '_max_':
-        default_value = mima[1]
-    elif default_value == '_min_':
-        default_value = mima[0]
-    ret += '    <input min="{}" max="{}" value="{}" class="input_j4j" name="{}_name" id="{}_input" type="number">\n'.format(mima[0], mima[1], default_value, div_id, div_id)
-    ret += '  </div>\n'
-    return ret
-
-def docker_dropdown(li, text, div_id):
-    html = ''
-    html += '    <div class="dropdown_j4j">\n'
-    html += '      <label for="{div_id}" class="bg-primary text-center label_j4j">{text}</label>\n'.format(div_id=div_id, text=text)
-    html += '      <div class="btn-group btn_group_j4spawner">\n'
-    html += '        <button type="button" class="btn btn-primary dropdown-toggle form-control button_j4j" data-toggle="dropdown" aria-expanded="false" id="{div_id}" name="{div_id}_name" value="{default}">\n'.format(div_id=div_id, default=li[0])
-    html += '          {}\n'.format(li[0])
-    html += '          <span class="caret"></span>\n'
-    html += '        </button>\n'
-    html += '        <ul class="dropdown-menu" name="uid" id="{}___ul">\n'.format(div_id)
-    for key in li:
-        html += '          <li><a href="#" id="{div_id}___element___{key}">{key_name}</a></li>\n'.format(div_id=div_id, key=key.replace('/', slash).replace(':', colon).replace('.', dot), key_name=key)
-    html += '        </ul>\n'
-    html += '      </div>\n'
-    html += '    </div>\n'
-    script  = ''
-    for key in li:
-        script += "jQuery('#"+div_id+"___element___"+key.replace('/', slash).replace(':', colon).replace('.', dot)+"').click(function(e){\n"
-        var = 'account'
-        script += "  if ( $('#"+var+"_input').val() === \""+key+"\" ){\n"
-        script += "    e.preventDefault();\n"
-        script += "  } else {\n"
-        script += "    $('#{}').val('{}');\n".format(div_id, key)
-        script += "    $('#{}').html('{} <span class=\"caret\"></span>');\n".format(div_id, key)
-        script += "    $('#{}_input').val('{}');\n".format(var, key)
-        script += "    hideAll();\n"
-        split = div_id.split('___')
-        for i in range(1,len(split)):
-            s = ""
-            for j in range(0, i+1):
-                s += split[j]+'___'
-            script += "    $('#{}div').show();\n".format(s)
-        script += "    $('#{}___{}___div').show();\n".format(div_id, key.replace('/', slash).replace(':', colon).replace('.', dot))
-        script += "    e.preventDefault();\n"
-        script += "  }\n"
-        script += "});\n"
     return html, script
 
 
 
-def dropdown(li, text, div_id, reservations={}):
-    html = ''
-    #html += '    <div class="row row_j4spawner">\n'
-    html += '    <div class="dropdown_j4j">\n'
-    html += '      <label for="{div_id}" class="bg-primary text-center label_j4j">{text}</label>\n'.format(div_id=div_id, text=text)
-    html += '      <div class="btn-group btn_group_j4spawner">\n'
-    html += '        <button type="button" class="btn btn-primary dropdown-toggle form-control button_j4j" data-toggle="dropdown" aria-expanded="false" id="{div_id}" name="{div_id}_name" value="{default}">\n'.format(div_id=div_id, default=li[0])
-    if li[0] == 'Docker':
-        html += '          {}\n'.format("HDF-Cloud")
-    else:
-        html += '          {}\n'.format(li[0])
-    html += '          <span class="caret"></span>\n'
-    html += '        </button>\n'
-    html += '        <ul class="dropdown-menu" name="uid" id="{}___ul">\n'.format(div_id)
-    if len(reservations) > 0:
-        for key in li:
-            if reservations.get(key, {}).get('State') == 'INACTIVE':
-                html += '          <li><a href="#" id="{div_id}___element___{key}" style="text-decoration:line-through; color:red">{key}</a></li>\n'.format(div_id=div_id, key=key)
-            else:
-                html += '          <li><a href="#" id="{div_id}___element___{key}">{key}</a></li>\n'.format(div_id=div_id, key=key)
-    else:
-        for key in li:
-            if key == 'Docker':
-                html += '          <li><a href="#" id="{div_id}___element___{key}">{key2}</a></li>\n'.format(div_id=div_id, key=key, key2="HDF-Cloud")
-            else:
-                html += '          <li><a href="#" id="{div_id}___element___{key}">{key}</a></li>\n'.format(div_id=div_id, key=key)
-    html += '        </ul>\n'
-    html += '      </div>\n'
-    html += '    </div>\n'
-    script  = ''
-    for key in li:
-        c = div_id.count('___')
-        var = ''
-        script += "jQuery('#"+div_id+"___element___"+key+"').click(function(e){\n"
-        if c == 0:
-            var = 'system'
-        elif c == 1:
-            var = 'account'
-        elif c == 2:
-            var = 'project'
-        elif c == 3:
-            var = 'partition'
-        elif c == 4:
-            var = 'reservation'
-        script += "  if ( $('#"+var+"_input').val() === \""+key+"\" ){\n"
-        script += "    e.preventDefault();\n"
-        script += "  } else {\n"
-        script += "    $('#{}').val('{}');\n".format(div_id, key)
-        if key == "Docker":
-            script += "    $('#{}').html('{} <span class=\"caret\"></span>');\n".format(div_id, "HDF-Cloud")
-        else:
-            script += "    $('#{}').html('{} <span class=\"caret\"></span>');\n".format(div_id, key)
-        script += "    $('#{}_input').val('{}');\n".format(var, key)
-        # If c == 0 -> show key system
-        # if c == 1 -> show key account and system in div_id (split('___')[0/1])
-        script += "    hideAll();\n"
-        # show parent divs and my own div
-        split = div_id.split('___')
-        for i in range(1,len(split)):
-            s = ""
-            for j in range(0, i+1):
-                s += split[j]+'___'
-            script += "    $('#{}div').show();\n".format(s)
-        script += "    $('#{}___{}___div').show();\n".format(div_id, key)
-        # show child divs
-        if c == 3:
-            script += "    var reservation = $('#{}___{}').val();\n".format(div_id, key)
-            script += "    $('#reservation_input').val(''+reservation);\n"
-            script += "    $('#{}___{}___'+reservation+'___div').show();\n".format(div_id, key)
-        if c == 2:
-            script += "    var partition = $('#{}___{}').val();\n".format(div_id, key)
-            script += "    var reservation = $('#{}___{}___'+partition).val();\n".format(div_id, key)
-            script += "    $('#partition_input').val(''+partition);\n"
-            script += "    $('#reservation_input').val(''+reservation);\n"
-            script += "    $('#{}___{}___'+partition+'___div').show();\n".format(div_id, key)
-            script += "    $('#{}___{}___'+partition+'___'+reservation+'___div').show();\n".format(div_id, key)
-        if c == 1:
-            script += "    var project = $('#{}___{}').val();\n".format(div_id, key)
-            script += "    var partition = $('#{}___{}___'+project+'').val();\n".format(div_id, key)
-            script += "    var reservation = $('#{}___{}___'+project+'___'+partition).val();\n".format(div_id, key)
-            script += "    $('#project_input').val(''+project);\n"
-            script += "    $('#partition_input').val(''+partition);\n"
-            script += "    $('#reservation_input').val(''+reservation);\n"
-            script += "    $('#{}___{}___'+project+'___div').show();\n".format(div_id, key)
-            script += "    $('#{}___{}___'+project+'___'+partition+'___div').show();\n".format(div_id, key)
-            script += "    $('#{}___{}___'+project+'___'+partition+'___'+reservation+'___div').show();\n".format(div_id, key)
-        if c == 0:
-            if key.lower() == "docker":
-                script += "    var account2 = $('#{}___{}').val();\n".format(div_id, key)
-                script += "    var account = account2.replace(\"/\", \"{}\").replace(\":\", \"{}\").replace(\".\", \"{}\");\n".format(slash, colon, dot)
-            else:
-                script += "    var account = $('#{}___{}').val();\n".format(div_id, key)
-            script += "    var project = $('#{}___{}___'+account+'').val();\n".format(div_id, key)
-            script += "    var partition = $('#{}___{}___'+account+'___'+project+'').val();\n".format(div_id, key)
-            script += "    var reservation = $('#{}___{}___'+account+'___'+project+'___'+partition).val();\n".format(div_id, key)
-            if key.lower() == "docker":
-                script += "    $('#account_input').val(''+account2);\n"
-            else:
-                script += "    $('#account_input').val(''+account);\n"
-            script += "    $('#project_input').val(''+project);\n"
-            script += "    $('#partition_input').val(''+partition);\n"
-            script += "    $('#reservation_input').val(''+reservation);\n"
-            script += "    $('#{}___{}___'+account+'___div').show();\n".format(div_id, key)
-            script += "    $('#{}___{}___'+account+'___'+project+'___div').show();\n".format(div_id, key)
-            script += "    $('#{}___{}___'+account+'___'+project+'___'+partition+'___div').show();\n".format(div_id, key)
-            script += "    $('#{}___{}___'+account+'___'+project+'___'+partition+'___'+reservation+'___div').show();\n".format(div_id, key)
-        script += "    e.preventDefault();\n"
-        script += "  }\n"
-        script += "});\n"
-    return html, script
+
+"""
+
+user_dic['HDF-Cloud'] = { 'base-notebook': {}, 'all-spark-notebook': {} }
+first_sorted = ["JupyterLab", "Dashboard"]
+second_sorted = {"JupyterLab": ["JUWELS", "JURECA", "DEEP", "JUROPA", "HDF-Cloud"], "Dashboard": ["UNICORE-Portal", "Rhino 1", "Rhino-2"] }
+
+
+#maintenance = ["JUWELS"]
+unicorex = { 'JURECA': { 'readmore': ['Read more JURECA'] }, 'JUWELS': {'readmore': ['Read more JUWELS']} }
+overall = { 'ABC': { 'readmore': ['ABC all'] } }
+
+
+first_sorted -> load via config file
+second_sorted -> load via config file
+user_dic -> add HDF-Cloud images before
+dashboards_dic -> load via config file
+reservations_var -> same as before
+checkboxes -> same as before, but load before function call
+maintenance -> same as before
+unicorex -> load from config file
+overall -> load via config file
+style -> add to template file
+
+a = create_html(first_sorted, second_sorted, user_dic, dashboards_dic, reservations_var, checkboxes, maintenance, unicorex, overall)
+"""
