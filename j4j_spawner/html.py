@@ -93,11 +93,17 @@ def create_html(first_list_all, second_list_dic, user_dic, dashboards_dic, reser
     html += '<div class="j4j">\n'
     script = "<script>\n"
     html += inputs(first_list[0] if len(first_list) > 0 else "undefined",
-                   True)
+                   False)
 
-
-    print(dashboard_list)
-    html += new_dropdown("firstdd", "Service", first_list, "onChangeDD1", "onClickDD1", True)
+    second_list_dic = {k: v for k, v in second_list_dic.items() if len(v) > 0}
+    tormf=[]
+    for i in first_list:
+        if i not in second_list_dic.keys():
+            tormf.append(i)
+    for i in tormf:
+        first_list.remove(i)
+    
+    html += new_dropdown("firstdd", "Service", first_list, "onChangeDD1", "onClickDD1", len(second_list_dic.keys()) > 1)
     html += new_dropdown("dashboarddd", "Dashboard", dashboard_list, "onChangeDDDash", "onClickDDDash")
     html += new_dropdown("seconddd", "System", second_list, "onChangeDD2", "onClickDD2")
     html += new_dropdown("thirddd", "Account", third_list, "onChangeDD3", "onClickDD3")
