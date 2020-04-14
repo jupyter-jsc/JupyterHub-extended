@@ -564,7 +564,7 @@ class J4J_Spawner(Spawner):
                 spawn_config = json.load(f)
             with open(self.user.authenticator.unicore_infos, 'r') as f:
                 ux = json.load(f)
-            user_dic['HDF-Cloud'] = ux.get('HDF-Cloud', {}).get('images')
+            user_dic['HDF-Cloud'] = ux.get('HDFCLOUD', {}).get('images')
             with open(self.dashboards_path, 'r') as f:
                 dashboards = json.load(f)
             with open(self.project_checkbox_path, 'r') as f:
