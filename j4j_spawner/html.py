@@ -35,7 +35,7 @@ def html_resource(dic, div_id):
     ret += '  </div>\n'
     return ret
 
-def create_html(first_list_all, second_list_dic, user_dic, dashboards_dic, reservations_dic, checkboxes, maintenance, unicorex, log, overall_infos={}):
+def create_html(first_list_all, second_list_dic, user_dic, dashboards_dic, reservations_dic, checkboxes, maintenance, unicorex, overall_infos={}):
     html = ""
     if len(maintenance) > 0:
         html += '<h3 class="maintenance_j4j">The following systems are not available right now: {}</h3>\n'.format(', '.join(maintenance))
@@ -156,12 +156,12 @@ def create_html(first_list_all, second_list_dic, user_dic, dashboards_dic, reser
     html += overall_readmore(overall_infos)
     html += '</div>\n'
 
-    script += onchange_dd6(user_dic, reservations_dic)
-    script += onchange_dd5(user_dic, log,reservations_dic)
+    script += onchange_dd6()
+    script += onchange_dd5(user_dic, reservations_dic)
     script += onchange_dd4(user_dic, dashboards_dic)
     script += onchange_dd3(user_dic)
     script += onchange_dd2(user_dic)
-    script += onchange_dddash(user_dic, dashboard_list, dashboards_dic)
+    script += onchange_dddash(dashboard_list, dashboards_dic)
     script += onchange_dd1(first_list, second_list_dic)
     script += onclick_dd6()
     script += onclick_dd5()
@@ -437,7 +437,7 @@ def onclick_dd6():
     ret += "}\n"
     return ret
 
-def onchange_dd6(user_dic, reservations_dic={}):
+def onchange_dd6():
     ret = ""
     ret += "function onChangeDD6() {\n"
     ret += "  var first = $('#firstdd').val();\n"
@@ -454,7 +454,7 @@ def onchange_dd6(user_dic, reservations_dic={}):
     ret += "}\n"
     return ret
 
-def onchange_dd5(user_dic, log, reservations_dic={}):
+def onchange_dd5(user_dic, reservations_dic={}):
     ret = ""
     ret += "function onChangeDD5() {\n"
     ret += "  var first = $('#firstdd').val();\n"
@@ -465,10 +465,8 @@ def onchange_dd5(user_dic, log, reservations_dic={}):
     ret += "  $('#fifth_input').val(value);\n"
     ret += '  checkboxes_jlab();\n'
     ret += "  $('#fifthdd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
-    log.info("DEBUG - {}".format(user_dic))
     for second, rest2 in user_dic.items():
         ret += '    if ( second == "'+ second +'" ) {\n'
-        log.info("DEBUG - {} {}".format(second, rest2))
         for third, rest3 in rest2.items():
             ret += '      if ( third == "'+ third +'" ) {\n'
             for fourth, rest4 in rest3.items():
@@ -500,7 +498,7 @@ def onchange_dd5(user_dic, log, reservations_dic={}):
                             default = mini
                         text = res_info.get('TEXT').replace('_min_', "{}".format(mini)).replace('_max_', "{}".format(maxi))
                         ret += "            $('#resource_{}_div').show();\n".format(resource_name.lower())
-                        ret += "            $('#resource_"+ resource_name.lower() +"_input').attr({\"max\": "+ "{}".format(minmax[1]) +", \"min\": "+ "{}".format(minmax[0]) +", \"value\": "+ "{}".format(default) +" });\n"
+                        ret += "            $('#resource_"+ resource_name.lower() +"_input').attr({\"max\": "+ "{}".format(maxi) +", \"min\": "+ "{}".format(mini) +", \"value\": "+ "{}".format(default) +" });\n"
                         ret += "            $('#resource_"+ resource_name.lower() +"_label').text(\""+text+"\");\n"
                     if len(reservations) > 0:
                         reservations.insert(0, "None")
@@ -609,7 +607,7 @@ def onchange_dd2(user_dic):
     ret += "}\n"
     return ret
 
-def onchange_dddash(user_dic, dashboard_list, dashboard_dic):
+def onchange_dddash(dashboard_list, dashboard_dic):
     ret = ""
     ret += "function onChangeDDDash() {\n"
     ret += "  var first = $('#firstdd').val();\n"
@@ -753,32 +751,3 @@ def checkbox(div_id, cb_infos, onClick):
     html += '    </li>\n'
     html += '  </div>\n'
     return html, script
-
-
-
-
-"""
-
-user_dic['HDF-Cloud'] = { 'base-notebook': {}, 'all-spark-notebook': {} }
-first_sorted = ["JupyterLab", "Dashboard"]
-second_sorted = {"JupyterLab": ["JUWELS", "JURECA", "DEEP", "JUROPA", "HDF-Cloud"], "Dashboard": ["UNICORE-Portal", "Rhino 1", "Rhino-2"] }
-
-
-#maintenance = ["JUWELS"]
-unicorex = { 'JURECA': { 'readmore': ['Read more JURECA'] }, 'JUWELS': {'readmore': ['Read more JUWELS']} }
-overall = { 'ABC': { 'readmore': ['ABC all'] } }
-
-
-first_sorted -> load via config file
-second_sorted -> load via config file
-user_dic -> add HDF-Cloud images before
-dashboards_dic -> load via config file
-reservations_var -> same as before
-checkboxes -> same as before, but load before function call
-maintenance -> same as before
-unicorex -> load from config file
-overall -> load via config file
-style -> add to template file
-
-a = create_html(first_sorted, second_sorted, user_dic, dashboards_dic, reservations_var, checkboxes, maintenance, unicorex, overall)
-"""

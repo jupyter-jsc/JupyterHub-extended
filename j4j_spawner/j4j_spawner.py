@@ -46,7 +46,7 @@ class J4J_Spawner(Spawner):
                       {"progress": 20, "html_message": "Creating a <a href=\"https://www.unicore.eu\">UNICORE</a> Job." },
                       {"progress": 40, "html_message": "Submitting Job to <a href=\"https://www.unicore.eu\">UNICORE</a>." },
                       {"progress": 60, "html_message": "Waiting until your <system>-Job is started. (Timeout at <timeout>)" },
-                      {"progress": 80, "html_message": "Load modules on HPC System. Waiting for an answer of your JupyterLab. (Timeout at <timeout>)"}
+                      {"progress": 80, "html_message": "Load modules on HPC System. Waiting for an answer of your Service. (Timeout at <timeout>)"}
                      ]
     progs_no = 0
     db_progs_no = -1
@@ -57,6 +57,7 @@ class J4J_Spawner(Spawner):
     login_handler = ''
     useraccs_complete = False
     error_message = ""
+    service = ""
     system = ""
     project = ""
     account = ""
@@ -93,6 +94,7 @@ class J4J_Spawner(Spawner):
             self.sendmail = state.get('sendmail', False)
             self.login_handler = state.get('loginhandler', '')
             self.useraccs_complete = state.get('useraccs_complete', False)
+            self.service = state.get('service', "")
             self.system = state.get('system', "")
             self.project = state.get('project', "")
             self.account = state.get('account', "")
@@ -109,6 +111,7 @@ class J4J_Spawner(Spawner):
             self.sendmail = False
             self.login_handler = ''
             self.useraccs_complete = False
+            self.service = ""
             self.system = ""
             self.project = ""
             self.account = ""
@@ -128,6 +131,7 @@ class J4J_Spawner(Spawner):
         state['sendmail'] = self.sendmail
         state['loginhandler'] = self.login_handler
         state['useraccs_complete'] = self.useraccs_complete
+        state['service'] = self.service
         state['system'] = self.system
         state['project'] = self.project
         state['account'] = self.account
@@ -179,7 +183,7 @@ class J4J_Spawner(Spawner):
             db_spawner = None
             await sleep(1)
 
-    def setup_voila_proxy(self, uuidcode, voilaport, urls=None):
+        """    def setup_voila_proxy(self, uuidcode, voilaport, urls=None):
         # add routes for voila to proxy
         try:
             if not urls:
@@ -203,7 +207,7 @@ class J4J_Spawner(Spawner):
                         raise Exception('{} {} {}'.format(proxy_base_url+proxy_url, r.status_code, r.text))
                 self.log.debug("userserver={} - uuidcode={} Added voila route to proxy: {} => {}".format(self._log_name.lower(), uuidcode, proxy_url, target))
         except:
-            self.log.exception("userserver={} - uuidcode={} Could not add voila route to proxy".format(self._log_name.lower(), uuidcode))
+            self.log.exception("userserver={} - uuidcode={} Could not add voila route to proxy".format(self._log_name.lower(), uuidcode))"""
         
     def setup_proxys(self, uuidcode, urls=None):
         # add routes to proxy
@@ -231,6 +235,8 @@ class J4J_Spawner(Spawner):
             proxy_urls.append('/api/routes{baseurl}api/jobstatus/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
             proxy_urls.append('/api/routes{baseurl}api/cancel/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
             proxy_json = { 'target': target }
+            if self.service == "Dashboard":
+                self.log.debug("{} - Route everything but /voila to an error page / non existent page".format(uuidcode))
             for proxy_url in proxy_urls:
                 with closing(requests.post(proxy_base_url+proxy_url, headers=proxy_headers, json=proxy_json, verify=False)) as r:
                     if r.status_code != 201:
@@ -259,7 +265,8 @@ class J4J_Spawner(Spawner):
             proxy_urls.append('/api/routes{baseurl}api/cancel/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
             # voila urls
             proxy_urls.append('/api/routes{shortbaseurl}{username}/{servername}/dashboard'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
-            
+            if self.service == "Dashboard":
+                self.log.debug("{} - Removes routes to0 everything but /voila to an error page / non existent page".format(uuidcode))
             with open(self.user.authenticator.proxy_secret, 'r') as f:
                 proxy_secret = f.read().strip()
             proxy_secret = proxy_secret.strip()[len('export CONFIGPROXY_AUTH_TOKEN='):]
@@ -314,18 +321,16 @@ class J4J_Spawner(Spawner):
                 self.log.exception("Could not check for cron job infos")
                 self.handler.redirect(self.user.authenticator.logout_url(self.hub.base_url))
                 raise Exception("{} - Could not find auth state. Please login again.".format(uuidcode))
-
+        self.service = self.user_options.get('service', '')
         self.system = self.user_options.get('system', '')
-        if self.system.lower() == 'docker':
-            self.system = "HDF-Cloud"
         self.project = self.user_options.get('project', '')
         self.account = self.user_options.get('account', '')
         self.partition = self.user_options.get('partition', '')
         self.resources =  ' '.join(["{}: {}".format(k,v) if k != "Runtime" else "{}: {}".format(k,int(v/60)) for k,v in self.user_options.get('Resources', {}).items()])
-        self.reservation = self.user_options.get('reservation', '')
+        self.reservation = self.user_options.get('reservation')
         self.starttimesec = int(time.time())
         # set http_timeout
-        if self.user_options.get('system', 'docker').lower() == 'docker' or self.user_options.get('partition', 'LoginNode') == 'LoginNode':
+        if self.system == 'HDF-Cloud' or self.user_options.get('partition', 'LoginNode') == 'LoginNode':
             self.http_timeout = 300
         else:
             self.http_timeout = 12*60*60
@@ -363,7 +368,7 @@ class J4J_Spawner(Spawner):
                 except:
                     self.log.exception("uuidcode={} - Could not create own environment".format(uuidcode))
                     raise Exception("uuidcode={} - Could not load environment. Please try again".format(uuidcode))
-        if self.user_options.get('system').lower() != 'docker':
+        if self.system != 'HDF-Cloud':
             if 'JUPYTERHUB_ACTIVITY_URL' in env:
                 del env['JUPYTERHUB_ACTIVITY_URL']
             if 'JUPYTERHUB_API_URL' in env:
@@ -379,25 +384,30 @@ class J4J_Spawner(Spawner):
                                            state.get('refreshtoken'),
                                            env['JUPYTERHUB_API_TOKEN'],
                                            state.get('accesstoken'),
-                                           self.user_options.get('account'),
-                                           self.user_options.get('project'),
+                                           self.account,
+                                           self.project,
                                            self._log_name.lower(),
                                            self.user.escaped_name,
                                            self.user.authenticator.orchestrator_token_path,
                                            state.get('login_handler', ''))
         spawn_data = create_spawn_data(self._log_name.lower(),
                                        env,
-                                       self.user_options.get('partition'),
-                                       self.user_options.get('reservation'),
+                                       self.partition,
+                                       self.reservation,
                                        self.user_options.get('Resources', {}),
-                                       self.user_options.get('system'),
+                                       self.system,
                                        self.user_options.get('Checkboxes', []))
         self.login_handler = state.get('login_handler', '')
 
         try:
             with open(self.user.authenticator.j4j_urls_paths, 'r') as f:
                 urls = json.load(f)
-            url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
+            if self.service == "JupyterLab":
+                url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
+            elif self.service == "Dashboard":
+                url = urls.get('orchestrator', {}).get('url_dashboards', '<no_url_found>')
+            else:
+                self.log.error("{} - Service {} unknown".format(uuidcode, self.service))
             method = "POST"
             method_args = {"url": url,
                            "headers": spawn_header,
@@ -480,7 +490,12 @@ class J4J_Spawner(Spawner):
             header['tokenurl'] = self.user.authenticator.jscusername_token_url
             header['authorizeurl'] = self.user.authenticator.jscusername_authorize_url
         try:
-            url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
+            if self.service == "JupyterLab":
+                url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
+            elif self.service == "Dashboard":
+                url = urls.get('orchestrator', {}).get('url_dashboards', '<no_url_found>')
+            else:
+                self.log.error("{} - Service {} unknown".format(uuidcode, self.service))
             method = "DELETE"
             method_args = {"url": url,
                            "headers": header,
@@ -569,7 +584,6 @@ class J4J_Spawner(Spawner):
                 dashboards = json.load(f)
             with open(self.project_checkbox_path, 'r') as f:
                 checkboxes = json.load(f)
-            self.log.debug("DEBUG: - User-Dic: {}".format(user_dic))
             self.html_code = create_html(spawn_config.get('firstSorted', []),
                                          spawn_config.get('secondSorted', {}),
                                          user_dic,
@@ -578,7 +592,6 @@ class J4J_Spawner(Spawner):
                                          checkboxes,
                                          maintenance,
                                          ux,
-                                         self.log,
                                          spawn_config.get('overallText'))
         except Exception:
             self.log.exception("Could not build html page")
@@ -589,45 +602,62 @@ class J4J_Spawner(Spawner):
     def options_from_form(self, form_data):
         ret = {}
         self.log.info("Form_data: {}".format(form_data))
-        return ret
-        with open(self.user.authenticator.unicore_infos, 'r') as f:
-            ux = json.load(f)
+        """
+        d = {'first_input': ['JupyterLab'],
+             'dashboard_input': ['undefined'],
+             'second_input': ['JUWELS'],
+             'third_input': ['kreuzer1'],
+             'fourth_input': ['ccstvs'],
+             'fifth_input': ['gpus'],
+             'sixth_input': ['undefined'],
+             'resource_nodes_name': ['1'],
+             'resource_runtime_name': ['60'],
+             'resource_gpus_name': ['4'],
+             'resource_cpus_per_node_name': ['24']}
+        
+        d = {'first_input': ['JupyterLab'],
+             'dashboard_input': ['undefined'],
+             'second_input': ['JURECA'],
+             'third_input': ['kreuzer1'],
+             'fourth_input': ['training1911'],
+             'fifth_input': ['gpus'],
+             'sixth_input': ['rs-img-proc-gpu-2'],
+             'JupyterLab_ALL_ALL_ALL_ALL_sendmail_name': ['on'],
+             'resource_nodes_name': ['1'],
+             'resource_runtime_name': ['60'],
+             'resource_gpus_name': ['4'],
+             'resource_cpus_per_node_name': ['24']}
+        """        
         with open(self.project_checkbox_path, 'r') as f:
-            project_cb_dict = json.load(f)
+            checkboxes = json.load(f)
         with open(self.user.authenticator.resources, 'r') as f:
             filled_resources = json.load(f)
-        self.log.debug("{} - form_data: {}".format(self.user.name, form_data))
-        ret['system'] = form_data.get('system_input')[0]
-        ret['account'] = form_data.get('account_input')[0]
-        ret['sendmail'] = 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name='sendmail') in form_data.keys()
-        if ret['system'].upper() == 'DOCKER':
-            for checkbox_name, checkbox_info in project_cb_dict.get('ALL', {}).items():
-                if checkbox_info.get('docker', 'false').lower() == 'true':
-                    if 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name=checkbox_name) in form_data.keys():
-                        if len(checkbox_info.get('scriptpath')) > 0:
-                            ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
-            return ret
-        ret['project'] = form_data.get('project_input')[0]
-        ret['partition'] = form_data.get('partition_input')[0]
-        ret['reservation'] = form_data.get('reservation_input')[0]
+        ret['service'] = form_data.get('first_input')[0]
+        ret['system'] = form_data.get('second_input')[0]
+        ret['account'] = form_data.get('third_input')[0]
+        ret['project'] = form_data.get('fourth_input')[0]
+        ret['partition'] = form_data.get('fifth_input')[0]
+        ret['reservation'] = form_data.get('sixth_input')[0]
         if ret['reservation'] == "undefined":
             ret['reservation'] = None
-        # Checkboxen
-        ret['Checkboxes'] = []
-        for checkbox_name, checkbox_info in project_cb_dict.get(ret['system'], {}).items():
-            if 'system_{system}_{account}_{project}_{checkbox_name}_name'.format(system=ret['system'], account=ret['account'], project=ret['project'], checkbox_name=checkbox_name) in form_data.keys():
-                if len(checkbox_info.get('scriptpath')) > 0:
-                    ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
-        for checkbox_name, checkbox_info in project_cb_dict.get('ALL', {}).items():
-            if 'system_{system}_{checkbox_name}_name'.format(system=ret['system'], checkbox_name=checkbox_name) in form_data.keys():
-                if len(checkbox_info.get('scriptpath')) > 0:
-                    ret['Checkboxes'].append(checkbox_info.get('scriptpath'))
+        ret['Checkboxes'] = {}
+        ret['sendmail'] = 'JupyterLab_ALL_ALL_ALL_ALL_sendmail_name' in form_data.keys()
+        for service in [ret['service'], "ALL"]:
+            for system in [ret['system'], "ALL"]: 
+                for account in [ret['account'], "ALL"]:
+                    for project in [ret["project"], "ALL"]:
+                        for partition in [ret["partition"], "ALL"]:
+                            for cbname, cb_infos in checkboxes.get(service, {}).get(system, {}).get(account, {}).get(project, {}).get(partition, {}).items():
+                                if '{}_{}_{}_{}_{}_{}_name'.format(service, system, account, project, partition, cbname) in form_data.keys():
+                                    ret['Checkboxes'][cbname] = cb_infos
+        if ret['system'] == 'HDF-Cloud':
+            return ret
+        # -- 1 --            
         if ret['partition'] == 'LoginNode':
             return ret
         # Resources
         ret['Resources'] = {}
-        for key, value in form_data.items():
-            s = 'system_{system}_{account}_{project}_{partition}_'.format(system=ret['system'], account=ret['account'], project=ret['project'], partition=ret['partition'])
-            if key[:len(s)] == s:
-                ret['Resources'][key[len(s):-len('_name')]] = int(int(value[0])*filled_resources.get(ret['system']).get(ret['partition']).get(key[len(s):-len('_name')]).get('DIVISOR', 1))
+        for res_name, res_infos in filled_resources.get(ret['service'], {}).get(ret['partition'], {}).items():
+            s = 'resource_{}_name'.format(res_name.lower())
+            ret['Resources'][res_name] = form_data[s][0]*res_infos.get('DIVISOR', 1)
         return ret
