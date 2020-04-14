@@ -35,7 +35,7 @@ def html_resource(dic, div_id):
     ret += '  </div>\n'
     return ret
 
-def create_html(first_list_all, second_list_dic, user_dic, dashboards_dic, reservations_dic, checkboxes, maintenance, unicorex, overall_infos={}):
+def create_html(first_list_all, second_list_dic, user_dic, dashboards_dic, reservations_dic, checkboxes, maintenance, unicorex, log, overall_infos={}):
     html = ""
     if len(maintenance) > 0:
         html += '<h3 class="maintenance_j4j">The following systems are not available right now: {}</h3>\n'.format(', '.join(maintenance))
@@ -151,7 +151,7 @@ def create_html(first_list_all, second_list_dic, user_dic, dashboards_dic, reser
     html += '</div>\n'
 
     script += onchange_dd6(user_dic, reservations_dic)
-    script += onchange_dd5(user_dic, reservations_dic)
+    script += onchange_dd5(user_dic, log,reservations_dic)
     script += onchange_dd4(user_dic, dashboards_dic)
     script += onchange_dd3(user_dic)
     script += onchange_dd2(user_dic)
@@ -172,7 +172,6 @@ def create_html(first_list_all, second_list_dic, user_dic, dashboards_dic, reser
     html += script
     return html
 
-    html += overall_readmore(overall_infos)
 def overall_readmore(overall_infos):
     ret = ""
     for name, infos in overall_infos.items():
@@ -449,7 +448,7 @@ def onchange_dd6(user_dic, reservations_dic={}):
     ret += "}\n"
     return ret
 
-def onchange_dd5(user_dic, reservations_dic={}):
+def onchange_dd5(user_dic, log, reservations_dic={}):
     ret = ""
     ret += "function onChangeDD5() {\n"
     ret += "  var first = $('#firstdd').val();\n"
@@ -460,8 +459,10 @@ def onchange_dd5(user_dic, reservations_dic={}):
     ret += "  $('#fifth_input').val(value);\n"
     ret += '  checkboxes_jlab();\n'
     ret += "  $('#fifthdd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
+    log.info("DEBUG - {}".format(user_dic))
     for second, rest2 in user_dic.items():
         ret += '    if ( second == "'+ second +'" ) {\n'
+        log.info("DEBUG - {} {}".format(second, rest2))
         for third, rest3 in rest2.items():
             ret += '      if ( third == "'+ third +'" ) {\n'
             for fourth, rest4 in rest3.items():

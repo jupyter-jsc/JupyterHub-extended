@@ -569,6 +569,7 @@ class J4J_Spawner(Spawner):
                 dashboards = json.load(f)
             with open(self.project_checkbox_path, 'r') as f:
                 checkboxes = json.load(f)
+            self.log.debug("DEBUG: - User-Dic: {}".format(user_dic))
             self.html_code = create_html(spawn_config.get('firstSorted', []),
                                          spawn_config.get('secondSorted', {}),
                                          user_dic,
@@ -577,6 +578,7 @@ class J4J_Spawner(Spawner):
                                          checkboxes,
                                          maintenance,
                                          ux,
+                                         self.log,
                                          spawn_config.get('overallText'))
         except Exception:
             self.log.exception("Could not build html page")
