@@ -395,6 +395,7 @@ class J4J_Spawner(Spawner):
                                        self.partition,
                                        self.reservation,
                                        self.user_options.get('Resources', {}),
+                                       self.service,
                                        self.system,
                                        self.user_options.get('Checkboxes', []))
         self.login_handler = state.get('login_handler', '')
@@ -402,12 +403,7 @@ class J4J_Spawner(Spawner):
         try:
             with open(self.user.authenticator.j4j_urls_paths, 'r') as f:
                 urls = json.load(f)
-            if self.service == "JupyterLab":
-                url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
-            elif self.service == "Dashboard":
-                url = urls.get('orchestrator', {}).get('url_dashboards', '<no_url_found>')
-            else:
-                self.log.error("{} - Service {} unknown".format(uuidcode, self.service))
+            url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
             method = "POST"
             method_args = {"url": url,
                            "headers": spawn_header,
@@ -490,12 +486,7 @@ class J4J_Spawner(Spawner):
             header['tokenurl'] = self.user.authenticator.jscusername_token_url
             header['authorizeurl'] = self.user.authenticator.jscusername_authorize_url
         try:
-            if self.service == "JupyterLab":
-                url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
-            elif self.service == "Dashboard":
-                url = urls.get('orchestrator', {}).get('url_dashboards', '<no_url_found>')
-            else:
-                self.log.error("{} - Service {} unknown".format(uuidcode, self.service))
+            url = urls.get('orchestrator', {}).get('url_jobs', '<no_url_found>')
             method = "DELETE"
             method_args = {"url": url,
                            "headers": header,
