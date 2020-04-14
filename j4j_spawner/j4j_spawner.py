@@ -159,10 +159,10 @@ class J4J_Spawner(Spawner):
                 return
             self.user.db.refresh(db_spawner)
             self.load_state(db_spawner.state)
-            if db_spawner.user_options.get('system', 'none').lower() == 'docker':
+            if db_spawner.user_options.get('system', 'none').lower() == 'docker' or db_spawner.user_options.get('system', 'none') == "HDF-Cloud":
                 if 'starttimesec' in db_spawner.state:
                     timeout = db_spawner.state['starttimesec'] + self.http_timeout
-                await yield_({'progress': 50, 'html_message': 'Start JupyterLab in a virtual Machine. (Timeout at {})'.format(datetime.datetime.fromtimestamp(timeout).strftime("%Y-%m-%d %H:%M:%S"))})
+                await yield_({'progress': 50, 'html_message': 'Start Service in a virtual Machine. (Timeout at {})'.format(datetime.datetime.fromtimestamp(timeout).strftime("%Y-%m-%d %H:%M:%S"))})
                 return
             while self.progs_no <= self.db_progs_no:
                 s_orig = self.progs_messages_all[self.progs_no]
@@ -428,7 +428,7 @@ class J4J_Spawner(Spawner):
             self.log.exception("uuidcode={} - J4J_Orchestrator communication failed. Raise web.HTTPError to inform user. {} {}".format(uuidcode, method, self.user.authenticator.remove_secret(method_args)))
             raise Exception('A mandatory background service is not running. An administrator is informed. Sorry for the inconvenience.')
 
-        if self.user_options.get('sendmail', False):
+        if 'sendmail' in self.user_options.get('Checkboxes', {}).keys():
             self.sendmail = True
         self.db_progs_no = 0
         self.job_status = 'createjob'
@@ -639,7 +639,6 @@ class J4J_Spawner(Spawner):
         if ret['reservation'] == "undefined":
             ret['reservation'] = None
         ret['Checkboxes'] = {}
-        ret['sendmail'] = 'JupyterLab_ALL_ALL_ALL_ALL_sendmail_name' in form_data.keys()
         for service in [ret['service'], "ALL"]:
             for system in [ret['system'], "ALL"]: 
                 for account in [ret['account'], "ALL"]:
