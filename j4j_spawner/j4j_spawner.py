@@ -58,6 +58,7 @@ class J4J_Spawner(Spawner):
     useraccs_complete = False
     error_message = ""
     service = ""
+    dashboard = ""
     system = ""
     project = ""
     account = ""
@@ -95,6 +96,7 @@ class J4J_Spawner(Spawner):
             self.login_handler = state.get('loginhandler', '')
             self.useraccs_complete = state.get('useraccs_complete', False)
             self.service = state.get('service', "")
+            self.dashboard = state.get('dashboard', "")
             self.system = state.get('system', "")
             self.project = state.get('project', "")
             self.account = state.get('account', "")
@@ -112,6 +114,7 @@ class J4J_Spawner(Spawner):
             self.login_handler = ''
             self.useraccs_complete = False
             self.service = ""
+            self.dashboard = ""
             self.system = ""
             self.project = ""
             self.account = ""
@@ -132,6 +135,7 @@ class J4J_Spawner(Spawner):
         state['loginhandler'] = self.login_handler
         state['useraccs_complete'] = self.useraccs_complete
         state['service'] = self.service
+        state['dashboard'] = self.dashboard
         state['system'] = self.system
         state['project'] = self.project
         state['account'] = self.account
@@ -322,6 +326,7 @@ class J4J_Spawner(Spawner):
                 self.handler.redirect(self.user.authenticator.logout_url(self.hub.base_url))
                 raise Exception("{} - Could not find auth state. Please login again.".format(uuidcode))
         self.service = self.user_options.get('service', '')
+        self.dashboard = self.user_options.get('dashboard', '')
         self.system = self.user_options.get('system', '')
         self.project = self.user_options.get('project', '')
         self.account = self.user_options.get('account', '')
@@ -396,6 +401,7 @@ class J4J_Spawner(Spawner):
                                        self.reservation,
                                        self.user_options.get('Resources', {}),
                                        self.service,
+                                       self.dashboard,
                                        self.system,
                                        self.user_options.get('Checkboxes', []))
         self.login_handler = state.get('login_handler', '')
@@ -624,6 +630,7 @@ class J4J_Spawner(Spawner):
         with open(self.user.authenticator.resources, 'r') as f:
             filled_resources = json.load(f)
         ret['service'] = form_data.get('first_input')[0]
+        ret['dashboard'] = form_data.get('dashboard_input')[0]
         ret['system'] = form_data.get('second_input')[0]
         ret['account'] = form_data.get('third_input')[0]
         ret['project'] = form_data.get('fourth_input')[0]
