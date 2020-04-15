@@ -23,12 +23,10 @@ from jupyterhub import orm
 from jupyterhub.utils import url_path_join
 
 
-from .utils import reservations, create_spawn_data, create_spawn_header
-from .html import create_html
+from .utils import reservations, create_spawn_data, create_spawn_header, get_maintenance, get_accesstoken
+from .html import create_html_dashboard, create_html_jupyterlab
 from .communication import j4j_orchestrator_request
 from .file_loads import get_token
-from j4j_spawner.utils import get_maintenance
-from j4j_spawner import utils
 
 class J4J_Spawner(Spawner):
     # Variables for the options_form
@@ -312,7 +310,7 @@ class J4J_Spawner(Spawner):
                 cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('account', '') == self.user_options.get('account', '') and \
                 cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('project', '') == self.user_options.get('project', '') and \
                 cron_job.get('systems', {}).get(self.user_options.get('system', '').upper(), {}).get('partition', '') == self.user_options.get('partition', ''):
-                    accesstoken, refreshtoken, expire = utils.get_accesstoken(self.log, cron_job.get('tokenurl', ''), cron_job.get('authorizeurl', ''))
+                    accesstoken, refreshtoken, expire = get_accesstoken(self.log, cron_job.get('tokenurl', ''), cron_job.get('authorizeurl', ''))
                     state['accesstoken'] = accesstoken
                     state['expire'] = expire
                     state['refreshtoken'] = refreshtoken
@@ -581,15 +579,25 @@ class J4J_Spawner(Spawner):
                 dashboards = json.load(f)
             with open(self.project_checkbox_path, 'r') as f:
                 checkboxes = json.load(f)
-            self.html_code = create_html(spawn_config.get('firstSorted', []),
-                                         spawn_config.get('secondSorted', {}),
-                                         user_dic,
-                                         dashboards,
-                                         reservations_var,
-                                         checkboxes,
-                                         maintenance,
-                                         ux,
-                                         spawn_config.get('overallText'))
+            self.service = state.get('spawner_service', {}).get(self.name, 'JupyterLab')
+            if state.get('spawner_service', {}).get(self.name, 'JupyterLab') == 'JupyterLab':
+                self.html_code = create_html_jupyterlab(spawn_config.get('jupyterlab_sorted', []),                                                        
+                                                        user_dic,
+                                                        reservations_var,
+                                                        checkboxes,
+                                                        maintenance,
+                                                        ux,
+                                                        spawn_config.get('overallText'))
+                #self.html_code = create_html(spawn_config.get('firstSorted', []), spawn_config.get('secondSorted', {}), user_dic, dashboards, reservations_var, checkboxes, maintenance, ux, spawn_config.get('overallText'))
+            elif state.get('spawner_service', {}).get(self.name, 'Dashboard') == 'Dashboard':
+                self.html_code = create_html_dashboard(spawn_config.get('dashboard_sorted', []),
+                                                       user_dic,
+                                                       dashboards,
+                                                       reservations_var,
+                                                       checkboxes,
+                                                       maintenance,
+                                                       ux,
+                                                       spawn_config.get('overallText'))
         except Exception:
             self.log.exception("Could not build html page")
             #self.log.exception("{} - Could not build html page".format(self._log_name.lower()))

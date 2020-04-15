@@ -38,10 +38,10 @@ class J4J_SpawnHandler(SpawnHandler):
             user = self.find_user(for_user)
             if user is None:
                 raise web.HTTPError(404, "No such user: %s" % for_user)
-
+        service = self.get_argument("service", "JupyterLab", True)
         if server_name == '':
             server_name = uuid.uuid4().hex
-            server_name = 'default_'+server_name[:8]
+            server_name = service + '_' + server_name[:8]
         else:
             server_name = server_name.lower()
             server_name_copy = server_name
@@ -56,6 +56,13 @@ class J4J_SpawnHandler(SpawnHandler):
         if not db_spawner or not db_spawner.server_id:
             next_url = next_url.replace('/user/', '/spawn/')
         self.redirect(next_url)
+
+        # define the service for the Spawner Class
+        state = await self.user.get_auth_state()
+        if 'spawner_service' not in state.keys():
+            state['spawner_service'] = {}
+        state['spawner_service'][server_name] = service
+        await user.save_auth_state(state)        
 
         # add proxy route for /hub/spawn/{user.name}/{server_name} and /hub/spawn-pending/{user.name}/{server_name}
         with open(user.authenticator.j4j_urls_paths, 'r') as f:
