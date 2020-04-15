@@ -58,7 +58,7 @@ class J4J_SpawnHandler(SpawnHandler):
         self.redirect(next_url)
 
         # define the service for the Spawner Class
-        state = await self.user.get_auth_state()
+        state = await user.get_auth_state()
         if 'spawner_service' not in state.keys():
             state['spawner_service'] = {}
         state['spawner_service'][server_name] = service
