@@ -369,7 +369,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                     #self.log.debug("{} - Spawner {} is not active (has no server_id)".format(user.name, db_spawner.name))
                     spawner[db_spawner.name]['active'] = False
                 if db_spawner.user_options and 'system' in db_spawner.user_options.keys():
-                    if db_spawner.user_options.get('system').upper() == 'DOCKER':
+                    if db_spawner.user_options.get('system').upper() == 'DOCKER' or db_spawner.user_options.get('system') == "HDF-Cloud":
                         spawner[db_spawner.name]['spawnable'] = True
                     else:
                         if db_spawner.user_options.get('reservation', 'None') != 'None' and db_spawner.user_options.get('reservation', 'None') != '' and db_spawner.user_options.get('reservation', 'None') != None:
