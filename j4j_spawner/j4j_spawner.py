@@ -239,6 +239,14 @@ class J4J_Spawner(Spawner):
             proxy_json = { 'target': target }
             if self.service == "Dashboard":
                 self.log.debug("{} - Route everything but /voila to an error page / non existent page".format(uuidcode))
+                #https://jupyter-jsc.fz-juelich.de/integration/user/t.kreuzer@fz-juelich.de/dashboard_1/voila/render/bqplot_vuetify_example.ipynb?
+                proxy_urls_deny = []
+                proxy_urls_deny.append('/api/routes{shortbaseurl}user/{username}/{servername}/tree'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
+                proxy_urls_deny.append('/api/routes{shortbaseurl}user/{username}/{servername}/lab'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
+                for proxy_url in proxy_urls_deny:
+                    with closing(requests.post(proxy_base_url+proxy_url, headers=proxy_headers, json={ 'target': "http://permission_denied:8081" }, verify=False)) as r:
+                        if r.status_code != 201:
+                            raise Exception('{} {} {}'.format(proxy_base_url+proxy_url, r.status_code, r.text))
             for proxy_url in proxy_urls:
                 with closing(requests.post(proxy_base_url+proxy_url, headers=proxy_headers, json=proxy_json, verify=False)) as r:
                     if r.status_code != 201:
@@ -273,6 +281,16 @@ class J4J_Spawner(Spawner):
                 proxy_secret = f.read().strip()
             proxy_secret = proxy_secret.strip()[len('export CONFIGPROXY_AUTH_TOKEN='):]
             proxy_headers = {'Authorization': 'token {}'.format(proxy_secret)}
+            if self.service == "Dashboard":
+                self.log.debug("{} - Route everything but /voila to an error page / non existent page".format(uuidcode))
+                #https://jupyter-jsc.fz-juelich.de/integration/user/t.kreuzer@fz-juelich.de/dashboard_1/voila/render/bqplot_vuetify_example.ipynb?
+                proxy_urls_deny = []
+                proxy_urls_deny.append('/api/routes{shortbaseurl}user/{username}/{servername}/tree'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
+                proxy_urls_deny.append('/api/routes{shortbaseurl}user/{username}/{servername}/lab'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
+                for proxy_url in proxy_urls_deny:
+                    with closing(requests.delete(proxy_base_url+proxy_url, headers=proxy_headers, verify=False)) as r:
+                        if r.status_code != 201:
+                            raise Exception('{} {} {}'.format(proxy_base_url+proxy_url, r.status_code, r.text))
             for proxy_url in proxy_urls:
                 try:
                     with closing(requests.delete(proxy_base_url+proxy_url, headers=proxy_headers, verify=False)) as r:
