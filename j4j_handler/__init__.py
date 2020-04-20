@@ -4,3 +4,4 @@ from j4j_handler import api_status_handler
 from j4j_handler import api_token_handler
 from j4j_handler import home_handler
 from j4j_handler import spawn_handler
+from j4j_handler import api_ux_handler
