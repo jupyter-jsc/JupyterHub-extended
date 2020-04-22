@@ -61,11 +61,16 @@ class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
         self.log.debug('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
         self.set_state_cookie(state)
+        extra_parameters = {'state': state}
+        jscldap_extra_parameters = os.environ.get('JSCLDAP_EXTRA_PARAMETERS', '')
+        for i in jscldap_extra_parameters.split():
+            keyvalue = i.split('=')
+            extra_parameters[keyvalue[0]] = keyvalue[1]
         self.authorize_redirect(
             redirect_uri=redirect_uri,
             client_id=unity[self.authenticator.jscldap_token_url]['client_id'],
             scope=unity[self.authenticator.jscldap_authorize_url]['scope'],
-            extra_params={'state': state},
+            extra_params=extra_parameters,
             response_type='code')
 
 class JSCUsernameCallbackHandler(OAuthCallbackHandler):
@@ -151,6 +156,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         os.environ.get('JSCLDAP_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as/oauth2-authz'),
         config=True,
         help="Authorize URL for JSCLdap Login"
+    )
+
+    jscldap_extra_parameters = Unicode(
+        os.environ.get('JSCLDAP_EXTRA_PARAMETERS', ''),
+        config=True,
+        help="Extra Parameters for the GET request to Unity"
     )
 
     jscusername_callback_url = Unicode(
@@ -662,7 +673,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                           validate_cert=self.tls_verify)
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
-
+        self.log.debug("uuidcode={} - UserInfo: {}".format(uuidcode, resp_json))
         username_key = unity[self.jscldap_authorize_url]['username_key']
 
         if not resp_json.get(username_key):
@@ -680,7 +691,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         if not resp_json_exp.get(tokeninfo_exp_key):
             self.log.error("uuidcode={} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
             return
-
+        self.log.debug("uuidcode={} - TokenInfo: {}".format(uuidcode, resp_json_exp))
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key).split('=')[1]
         username = self.normalize_username(username)
