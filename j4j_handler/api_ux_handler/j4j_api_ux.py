@@ -29,6 +29,7 @@ class J4J_APIUXHandler(APIHandler):
             self.flush()
             return
         data = self.request.body.decode("utf8")
+        jdata = json.loads(data)
         header = self.request.headers
         auth = header.get('Authorization', None)
         if not auth:
@@ -42,7 +43,7 @@ class J4J_APIUXHandler(APIHandler):
         cert_path = ""
         cert = ""
         try:
-            kernelurl = data.get('href', '')
+            kernelurl = jdata.get('href', '')
             ux_info_path = user.authenticator.unicore_infos
             with open(ux_info_path, 'r') as f:
                 ux_info = json.load(f)
@@ -65,18 +66,18 @@ class J4J_APIUXHandler(APIHandler):
             self.log.exception("uuidcode={} - Could not verify token {} with public key for UNICORE/X {}".format(uuidcode, auth, system))
             self.set_status(401)
             return
-        if data.get('status', '') == 'RUNNING':
+        if jdata.get('status', '') == 'RUNNING':
             # do nothing. We checked it previously and already know that
             self.set_status(204)
             return
-        elif data.get('status', '') in ['SUCCESSFUL', 'FAILED', 'DONE']:
+        elif jdata.get('status', '') in ['SUCCESSFUL', 'FAILED', 'DONE']:
             self.log.info("uuidcode={} - Job is finished. Stop it via JupyterHub.".format(uuidcode))
             try:
                 db_spawner = user.db.query(Spawner).filter(Spawner.name == server_name).filter(Spawner.user_id == user.orm_user.id).first()
                 if db_spawner:
                     user.db.refresh(db_spawner)
                     user.spawners[server_name].load_state(db_spawner.state)
-                if user.spawners[server_name].service == "Dashboard" and data.get('exitCode', '') == "127":
+                if user.spawners[server_name].service == "Dashboard" and jdata.get('exitCode', '') == "127":
                     try:
                         with open(user.authenticator.dashboards_path, 'r') as f:
                             dashboards_info = json.load(f)
@@ -94,6 +95,6 @@ class J4J_APIUXHandler(APIHandler):
                 self.write("Could not stop Server. Please look into the logs with the uuidcode: uuidcode={}".format(uuidcode))
                 self.flush()
             else:
-                self.log.debug("uuidcode={} UX Handler: Unknown status. Insert reaction to this status: {}".format(uuidcode, data))
+                self.log.debug("uuidcode={} UX Handler: Unknown status. Insert reaction to this status: {}".format(uuidcode, jdata))
             return
         return
