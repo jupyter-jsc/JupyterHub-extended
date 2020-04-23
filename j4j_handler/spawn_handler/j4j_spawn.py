@@ -78,25 +78,25 @@ class J4J_SpawnHandler(SpawnHandler):
             proxy_base_url = urls.get('hub', {}).get('url_api', 'http://j4j_{}_proxy:8001'.format(self.hub.base_url[1:-len('/hub/')]))
         proxy_urls = []
         # first we remove all proxy routes that may exist from previous starts
-        proxy_urls.append('/api/routes{baseurl}spawn-pending/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
-        proxy_urls.append('/api/routes{baseurl}spawn/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
-        proxy_urls.append('/api/routes{shortbaseurl}spawn/{username}/{servername}'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
-        proxy_urls.append('/api/routes{baseurl}api/users/{username}/servers/{servername}/progress'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
-        proxy_urls.append('/api/routes{baseurl}api/jobstatus/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
-        proxy_urls.append('/api/routes{baseurl}api/cancel/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
+        proxy_urls.append('/api/routes{baseurl}spawn-pending/{username}/{servername}'.format(baseurl=self.hub.base_url, username=user.escaped_name, servername=server_name))
+        proxy_urls.append('/api/routes{baseurl}spawn/{username}/{servername}'.format(baseurl=self.hub.base_url, username=user.escaped_name, servername=server_name))
+        proxy_urls.append('/api/routes{shortbaseurl}spawn/{username}/{servername}'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=user.escaped_name, servername=server_name))
+        proxy_urls.append('/api/routes{baseurl}api/users/{username}/servers/{servername}/progress'.format(baseurl=self.hub.base_url, username=user.escaped_name, servername=server_name))
+        proxy_urls.append('/api/routes{baseurl}api/jobstatus/{username}/{servername}'.format(baseurl=self.hub.base_url, username=user.escaped_name, servername=server_name))
+        proxy_urls.append('/api/routes{baseurl}api/cancel/{username}/{servername}'.format(baseurl=self.hub.base_url, username=user.escaped_name, servername=server_name))
         # voila urls
-        proxy_urls.append('/api/routes{shortbaseurl}{username}/{servername}/dashboard'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
-        proxy_urls.append('/api/routes{shortbaseurl}user/{username}/{servername}/tree'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
-        proxy_urls.append('/api/routes{shortbaseurl}user/{username}/{servername}/lab'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
+        proxy_urls.append('/api/routes{shortbaseurl}{username}/{servername}/dashboard'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=user.escaped_name, servername=server_name))
+        proxy_urls.append('/api/routes{shortbaseurl}user/{username}/{servername}/tree'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=user.escaped_name, servername=server_name))
+        proxy_urls.append('/api/routes{shortbaseurl}user/{username}/{servername}/lab'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=user.escaped_name, servername=server_name))
         
         for proxy_url in proxy_urls:
             try:
                 with closing(requests.delete(proxy_base_url+proxy_url, headers=proxy_headers, verify=False)) as r:
                     if r.status_code != 204 and r.status_code != 404:
                         raise Exception('{} {}'.format(r.status_code, r.text))
-                self.log.debug("userserver={} - Delete route from proxy: {}".format(self._log_name.lower(), proxy_url))
+                self.log.debug("UID={} - Delete route from proxy: {}".format(user.name, proxy_url))
             except:
-                self.log.exception("userserver={} - Could not delete route {} from proxy".format(self._log_name.lower(), proxy_url))
+                self.log.exception("UID={} - Could not delete route {} from proxy".format(user.name, proxy_url))
             
         
         hostname = socket.gethostname()
