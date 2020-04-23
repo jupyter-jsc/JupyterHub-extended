@@ -76,6 +76,16 @@ class J4J_APIUXHandler(APIHandler):
                 if db_spawner:
                     user.db.refresh(db_spawner)
                     user.spawners[server_name].load_state(db_spawner.state)
+                if user.spawners[server_name].service == "Dashboard" and data.get('exitCode', '') == "127":
+                    try:
+                        with open(user.authenticator.dashboards_path, 'r') as f:
+                            dashboards_info = json.load(f)
+                    except:
+                        self.log.exception("uuidcode={} - Could not load dashboard infos".format(uuidcode))
+                        dashboards_info = {}
+                    em = dashboards_info.get(user.spawners[server_name].dashboard, {}).get(user.spawners[server_name].system, {}).get('failmessage', 'Something went wrong :(')
+                    self.log.debug("uuidcode={} - Set error message for user to: {}".format(uuidcode, em))
+                    user.spawners[server_name].error_message = em
                 await user.spawners[server_name].cancel(uuidcode, False)
                 self.set_status(202)
             except:

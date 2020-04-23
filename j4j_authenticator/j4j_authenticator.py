@@ -266,6 +266,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         help = "Path to all reservations"
     )
     
+    dashboards_path = Unicode(
+        os.environ.get("DASHBOARDS_PATH", ""),
+        config = True,
+        help = "Path to dashboards infos"
+    )
+    
     enable_auth_state = Bool(
         os.environ.get('ENABLE_AUTH_STATE', False).lower() in {'true', '1'},
         config=True,
