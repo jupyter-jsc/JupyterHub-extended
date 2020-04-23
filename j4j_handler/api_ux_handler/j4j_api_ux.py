@@ -6,6 +6,7 @@ Created on May 10, 2019
 import uuid
 import requests
 import jwt
+import json
 
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
@@ -35,13 +36,16 @@ class J4J_APIUXHandler(APIHandler):
             self.write("No Authorization Header found")
             self.flush()
             return
+        
+        system = ""
+        cert_url = ""
+        cert_path = ""
+        cert = ""
         try:
             kernelurl = data.get('href', '')
-            ux_info = user.authenticator.unicore_infos
-            system = ""
-            cert_url = ""
-            cert_path = ""
-            cert = ""
+            ux_info_path = user.authenticator.unicore_infos
+            with open(ux_info_path, 'r') as f:
+                ux_info = json.load(f)
             for isystem, infos in ux_info.items():
                 if kernelurl.startswith(infos.get('link', '...')):
                     system = isystem
