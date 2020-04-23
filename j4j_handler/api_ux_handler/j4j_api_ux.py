@@ -53,7 +53,7 @@ class J4J_APIUXHandler(APIHandler):
                     cert_path = infos.get('certificate', False)
                     break
             if system != "":
-                with closing(requests.get(cert_url, headers={'accept: text/plain'}, verify=cert_path)) as r:
+                with closing(requests.get(cert_url, headers={'accept': 'text/plain'}, verify=cert_path)) as r:
                     cert = r.content
             
             bearer = auth.split()[1]
@@ -62,7 +62,7 @@ class J4J_APIUXHandler(APIHandler):
             jwt_dic = jwt.decode(bearer, cert_obj.public_key())
             self.log.debug("uuidcode={} - Tokeninfos decrypted: {}".format(uuidcode, jwt_dic))
         except:
-            self.log.warning("uuidcode={} - Could not verify token {} with public key for UNICORE/X {}".format(uuidcode, auth, system))
+            self.log.exception("uuidcode={} - Could not verify token {} with public key for UNICORE/X {}".format(uuidcode, auth, system))
             self.set_status(401)
             return
         if data.get('status', '') == 'RUNNING':
