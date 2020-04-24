@@ -71,6 +71,10 @@ class J4J_APIUXHandler(APIHandler):
             self.set_status(204)
             return
         elif jdata.get('status', '') in ['SUCCESSFUL', 'FAILED', 'DONE']:
+            if jdata.get('statusmessage', '') == 'Job was aborted by the user.':
+                # do nothing. We've killed this job via Jupyter-jsc and therefore know this status already
+                self.set_status(202)
+                return
             self.log.info("uuidcode={} - Job is finished. Stop it via JupyterHub.".format(uuidcode))
             try:
                 db_spawner = user.db.query(Spawner).filter(Spawner.name == server_name).filter(Spawner.user_id == user.orm_user.id).first()
@@ -94,7 +98,6 @@ class J4J_APIUXHandler(APIHandler):
                 self.set_status(501)
                 self.write("Could not stop Server. Please look into the logs with the uuidcode: uuidcode={}".format(uuidcode))
                 self.flush()
-            else:
-                self.log.debug("uuidcode={} UX Handler: Unknown status. Insert reaction to this status: {}".format(uuidcode, jdata))
-            return
+        else:
+            self.log.debug("uuidcode={} UX Handler: Unknown status. Insert reaction to this status: {}".format(uuidcode, jdata))
         return
