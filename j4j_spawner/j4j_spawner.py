@@ -533,6 +533,8 @@ class J4J_Spawner(Spawner):
     async def cancel(self, uuidcode, stopped):
         try:
             self.log.info("userserver={}, action=cancel, username={}, uuidcode={}".format(self._log_name.lower(), self.user.name, uuidcode))
+            self.log.info("1: {} - 2: {}".format(str(type(self._spawn_future)), self._spawn_future._state))
+            self.log.info("A: {} - B: {}".format(str(type(self._spawn_future)) == "<class '_asyncio.Task'>", self._spawn_future._state in ['PENDING']))
             if str(type(self._spawn_future)) == "<class '_asyncio.Task'>" and self._spawn_future._state in ['PENDING']:
                 self.log.debug("userserver={} - uuidcode={} Spawner is pending, try to cancel".format(self._log_name.lower(), uuidcode))
                 self.stopped = False
