@@ -643,8 +643,10 @@ def onchange_dd4(user_dic, dashboards_dic):
                     rest4_list = []
                     if "LoginNode" in rest4.keys():
                         rest4_list.append("LoginNode")
+                    if "LoginNodeVis" in rest4.keys():
+                        rest4_list.append("LoginNodeVis")
                     for i in sorted(rest4.keys(), key=lambda s: s.casefold()):
-                        if not i == "LoginNode":
+                        if not i in ["LoginNode", "LoginNodeVis"]:
                             rest4_list.append(i)
                     ret += '          $("#fifthdd_ul").html("");\n'
                     for name in rest4_list:
