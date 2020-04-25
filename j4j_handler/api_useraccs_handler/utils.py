@@ -25,6 +25,6 @@ def stripper(data):
         if isinstance(v, dict):
             v = stripper(v)
         #if k in ('LoginNode', 'JURECA', 'JURON', 'JUWELS') or v not in (u'', None, {}): 
-        if k in ('LoginNode') or v not in (u'', None, {}):
+        if k in ('LoginNode', 'LoginNodeVis') or v not in (u'', None, {}):
             ret[k] = v
     return ret

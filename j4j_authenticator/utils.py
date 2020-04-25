@@ -19,6 +19,8 @@ def get_user_dic(hpc_infos, partitions_path, unicore_path):
         if not project in dic.get(system).get(account).keys():
             dic[system][account][project] = {}
         dic[system][account][project]['LoginNode'] = {}
+        if len(unicore.get(system, {}).get('LoginNodeVis', [])) > 0:
+            dic[system][account][project]['LoginNodeVis'] = {}
         if len(system_partition) == 1:
             dic[system][account][project]['batch'] = {}
         elif len(system_partition) == 2:
@@ -51,7 +53,7 @@ def stripper(data):
         if isinstance(v, dict):
             v = stripper(v)
         #if k in ('LoginNode', 'JURECA', 'JURON', 'JUWELS') or v not in (u'', None, {}): 
-        if k in ('LoginNode') or v not in (u'', None, {}):
+        if k in ('LoginNode', 'LoginNodeVis') or v not in (u'', None, {}):
             ret[k] = v
     return ret
 

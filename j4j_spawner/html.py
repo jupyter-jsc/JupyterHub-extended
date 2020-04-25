@@ -574,7 +574,7 @@ def onchange_dd5(user_dic, reservations_dic={}):
                 for fifth in rest4.keys():
                     ret += '          if ( value == "' + fifth + '" ) {\n'
                     reservations = []
-                    if not fifth == "LoginNode":
+                    if not fifth in ["LoginNode", "LoginNodeVis"]:
                         for name in reservations_dic.get(second, {}).get('Account', {}).get(third, {}).keys():
                             partition = reservations_dic.get(second, {}).get('Account', {}).get(third, {}).get(name, {}).get('PartitionName', "")
                             if name not in reservations:
