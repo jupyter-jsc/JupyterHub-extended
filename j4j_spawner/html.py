@@ -4,13 +4,6 @@ Created on May 17, 2019
 @author: Tim Kreuzer
 '''
 
-import json
-
-'''
-Created on May 17, 2019
-
-@author: Tim Kreuzer
-'''
 
 def inputs(first, show=False):
     ret = ''
@@ -158,8 +151,6 @@ def create_html_dashboard(second_list_all, user_dic, dashboards_dic, reservation
             for dash, infos in dashboards_dic.items():
                 if m in infos.get('system', []):
                     infos.get('system', []).remove(m)
-    first = "Dashboard"
-    first_list = ["Dashboard"]
     second = ""
     second_list = []
     for isecond in second_list_all:
@@ -413,6 +404,13 @@ def onclick_dd1():
     ret += '  $("#second_input").val("undefined");\n'
     ret += '  $("#dashboard_input").val("undefined");\n'
     ret += '  $("#firstdd").val(value).trigger("change");\n'
+    ret += '  localStorage.setItem("first", value);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_dashboard", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_second", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_third", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fourth", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fifth", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_sixth", null);\n'
     ret += '  checkboxes_jlab();\n'
     ret += "}\n"
     return ret
@@ -440,6 +438,13 @@ def onclick_dddash():
     ret += '  $("#third_input").val("undefined");\n'
     ret += '  $("#second_input").val("undefined");\n'
     ret += '  $("#dashboarddd").val(value).trigger("change");\n'
+    ret += '  localStorage.setItem("first", $("#first_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_dashboard", value);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_second", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_third", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fourth", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fifth", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_sixth", null);\n'
     ret += '  checkboxes_jlab();\n'
     ret += "}\n"
     return ret
@@ -464,6 +469,13 @@ def onclick_dd2():
     ret += '  $("#fourth_input").val("undefined");\n'
     ret += '  $("#third_input").val("undefined");\n'
     ret += '  $("#seconddd").val(value).trigger("change");\n'
+    ret += '  localStorage.setItem("first", $("#first_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_dashboard", $("#dashboard_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_second", value);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_third", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fourth", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fifth", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_sixth", null);\n'
     ret += '  checkboxes_jlab();\n'
     ret += "}\n"
     return ret
@@ -485,6 +497,13 @@ def onclick_dd3():
     ret += '  $("#fifth_input").val("undefined");\n'
     ret += '  $("#fourth_input").val("undefined");\n'
     ret += '  $("#thirddd").val(value).trigger("change");\n'
+    ret += '  localStorage.setItem("first", $("#first_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_dashboard", $("#dashboard_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_second", $("#second_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_third", value);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fourth", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fifth", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_sixth", null);\n
     ret += '  checkboxes_jlab();\n'
     ret += "}\n"
     return ret
@@ -504,6 +523,13 @@ def onclick_dd4():
     ret += '  $("#sixth_input").val("undefined");\n'
     ret += '  $("#fifth_input").val("undefined");\n'
     ret += '  $("#fourthdd").val(value).trigger("change");\n'
+    ret += '  localStorage.setItem("first", $("#first_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_dashboard", $("#dashboard_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_second", $("#second_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_third", $("#third_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fourth", value);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fifth", null);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_sixth", null);\n'
     ret += '  checkboxes_jlab();\n'
     ret += "}\n"
     return ret
@@ -521,6 +547,13 @@ def onclick_dd5():
     ret += '  $("#sixthdd_div").hide();\n'
     ret += '  $("#sixth_input").val("undefined");\n'
     ret += '  $("#fifthdd").val(value).trigger("change");\n'
+    ret += '  localStorage.setItem("first", $("#first_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_dashboard", $("#dashboard_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_second", $("#second_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_third", $("#third_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fourth", $("#fourth_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fifth", value);\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_sixth", null);\n'
     ret += '  checkboxes_jlab();\n'
     ret += "}\n"
     return ret
@@ -534,6 +567,13 @@ def onclick_dd6():
     ret += '  }\n'
     ret += '  reservation_hide_all();\n'
     ret += '  $("#sixthdd").val(value).trigger("change");\n'
+    ret += '  localStorage.setItem("first", $("#first_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_dashboard", $("#dashboard_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_second", $("#second_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_third", $("#third_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fourth", $("#fourth_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_fifth", $("#fifth_input").val());\n'
+    ret += '  localStorage.setItem($("#first_input").val()+"_sixth", value);\n'
     ret += "}\n"
     return ret
 
@@ -633,12 +673,6 @@ def onchange_dd4(user_dic, dashboards_dic):
             ret += '      if ( third == "'+ third +'" ) {\n'
             for fourth, rest4 in rest3.items():
                 if len(rest4.keys()) > 0:
-                    for dash, dinfos in dashboards_dic.items():
-                        if dinfos.get('onlinerequired', 'false').lower() == 'true':
-                            ret += '        if ( first == "Dashboard" && dashboard == "' + dash + '" ) {\n'
-                            ret += "          $('#fifth_input').val('LoginNode');\n"
-                            ret += '          return;\n'
-                            ret += '        }\n'
                     ret += '        if ( value == "'+ fourth +'" ) {\n'
                     rest4_list = []
                     if "LoginNode" in rest4.keys():
@@ -649,6 +683,16 @@ def onchange_dd4(user_dic, dashboards_dic):
                         if not i in ["LoginNode", "LoginNodeVis"]:
                             rest4_list.append(i)
                     ret += '          $("#fifthdd_ul").html("");\n'
+                    for dash, dinfos in dashboards_dic.items():
+                        if dinfos.get(second, {}).get('onlinerequired', 'false').lower() == 'true':
+                            ret += '        if ( first == "Dashboard" && dashboard == "' + dash + '" ) {\n'
+                            ret += '          $("#fifthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD5", div_prefix="fifthdd", key="LoginNode")
+                            if 'LoginNodeVis' in user_dic.get(second, {}).get(third, {}).get(fourth, {}).keys() and dinfos.get(second, {}).get('LoginNodeVis', 'false').lower() == 'true':
+                                ret += '          $("#fifthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD5", div_prefix="fifthdd", key="LoginNodeVis")
+                            ret += '          $("#fifthdd").val("{}").trigger("change");\n'.format(rest4_list[0])
+                            ret += "          $('#fifthdd_div').show();\n"
+                            ret += '          return;\n'
+                            ret += '        }\n'
                     for name in rest4_list:
                         ret += '          $("#fifthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD5", div_prefix="fifthdd", key=name)
                     ret += '          $("#fifthdd").val("{}").trigger("change");\n'.format(rest4_list[0])
@@ -773,6 +817,33 @@ def init_script(first):
     ret += "$(document).ready(function() {\n"
     ret += '  $("#optionsheader").html("'+first+' Options");\n'
     ret += '  $("#firstdd").val("'+first+'").trigger("change");\n'
+    ret += '  var first = "{}";\n'.format(first)
+    ret += '  var ls_second = localStorage.getItem(first+"_second");\n'
+    ret += '  var ls_third = localStorage.getItem(first+"_third");\n'
+    ret += '  var ls_fourth = localStorage.getItem(first+"_fourth");\n'
+    ret += '  var ls_fifth = localStorage.getItem(first+"_fifth");\n'
+    ret += '  var ls_sixth = localStorage.getItem(first+"_sixth");\n'
+    if first == "Dashboard":
+      ret += '  var ls_dash = localStorage.getItem(first+"_dashboard");\n'
+      ret += '  if (ls_dash != null && ls_dash != "null") {\n'
+      ret += '    onClickDDDash(ls_dash);\n'
+    ret += '  if (ls_second != null && ls_second != "null") {\n'
+    ret += '    onClickDD2(ls_second);\n'
+    ret += '    if (ls_third != null && ls_third != "null") {\n'
+    ret += '      onClickDD3(ls_third);\n'
+    ret += '      if (ls_fourth != null && ls_fourth != "null") {\n'
+    ret += '        onClickDD4(ls_fourth);\n'
+    ret += '        if (ls_fifth != null && ls_fifth != "null") {\n'
+    ret += '          onClickDD5(ls_fifth);\n'
+    ret += '          if (ls_sixth != null && ls_sixth != "null") {\n'
+    ret += '            onClickDD6(ls_sixth);\n'
+    ret += '          }\n'
+    ret += '        }\n'
+    ret += '      }\n'
+    ret += '    }\n'
+    ret += '  }\n'
+    if first == "Dashboard":
+      ret += '  }\n'
     ret += '  checkboxes_jlab();\n'
     ret += "});\n"
     return ret
