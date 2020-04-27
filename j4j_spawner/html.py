@@ -503,7 +503,7 @@ def onclick_dd3():
     ret += '  localStorage.setItem($("#first_input").val()+"_third", value);\n'
     ret += '  localStorage.setItem($("#first_input").val()+"_fourth", null);\n'
     ret += '  localStorage.setItem($("#first_input").val()+"_fifth", null);\n'
-    ret += '  localStorage.setItem($("#first_input").val()+"_sixth", null);\n
+    ret += '  localStorage.setItem($("#first_input").val()+"_sixth", null);\n'
     ret += '  checkboxes_jlab();\n'
     ret += "}\n"
     return ret
