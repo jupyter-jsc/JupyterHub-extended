@@ -824,9 +824,9 @@ def init_script(first):
     ret += '  var ls_fifth = localStorage.getItem(first+"_fifth");\n'
     ret += '  var ls_sixth = localStorage.getItem(first+"_sixth");\n'
     if first == "Dashboard":
-      ret += '  var ls_dash = localStorage.getItem(first+"_dashboard");\n'
-      ret += '  if (ls_dash != null && ls_dash != "null") {\n'
-      ret += '    onClickDDDash(ls_dash);\n'
+        ret += '  var ls_dash = localStorage.getItem(first+"_dashboard");\n'
+        ret += '  if (ls_dash != null && ls_dash != "null") {\n'
+        ret += '    onClickDDDash(ls_dash);\n'
     ret += '  if (ls_second != null && ls_second != "null") {\n'
     ret += '    onClickDD2(ls_second);\n'
     ret += '    if (ls_third != null && ls_third != "null") {\n'
@@ -843,7 +843,7 @@ def init_script(first):
     ret += '    }\n'
     ret += '  }\n'
     if first == "Dashboard":
-      ret += '  }\n'
+        ret += '  }\n'
     ret += '  checkboxes_jlab();\n'
     ret += "});\n"
     return ret
