@@ -18,7 +18,6 @@ from tornado.httputil import url_concat
 from oauthenticator.oauth2 import OAuthLoginHandler, OAuthCallbackHandler
 from oauthenticator.generic import GenericOAuthenticator
 
-from .j4j_logout import J4J_LogoutHandler
 from .utils import get_user_dic 
 from j4j_authenticator import utils
 import time
@@ -316,7 +315,6 @@ class BaseAuthenticator(GenericOAuthenticator):
             
 
     login_handler = [JSCLDAPLoginHandler, JSCUsernameLoginHandler, HDFAAILoginHandler]
-    logout_handler = J4J_LogoutHandler
     callback_handler = [JSCLDAPCallbackHandler, JSCUsernameCallbackHandler, HDFAAICallbackHandler]
 
     def get_handlers(self, app):
