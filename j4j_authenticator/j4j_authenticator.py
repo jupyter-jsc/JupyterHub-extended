@@ -324,8 +324,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             (r'/jscusername_login', self.login_handler[1]),
             (r'/jscusername_callback', self.callback_handler[1]),
             (r'/hdfaai_login', self.login_handler[2]),
-            (r'/hdfaai_callback', self.callback_handler[2]),
-            (r'/logout', self.logout_handler)
+            (r'/hdfaai_callback', self.callback_handler[2])
         ]
 
     def get_callback_url(self, handler=None, authenticator_name=""):
