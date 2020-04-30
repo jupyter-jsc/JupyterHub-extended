@@ -44,6 +44,7 @@ class J4J_HomeHandler(HomeHandler):
             user_accs = get_user_dic(hpc_infos, self.resources, self.unicore_infos)
             self.log.debug("uuidcode={} - Dict created: {}".format(uuidcode, user_accs))
             state['user_dic'] = user_accs
+            state['dispatch_updates'] = False
             await user.save_auth_state(state)
             #html = html.replace("<!-- $INFOMESSAGE -->", '<p style="color: #004671">We\'ve updated your hpc accounts.</p>')
         self.finish(html)
