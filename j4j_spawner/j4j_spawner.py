@@ -562,9 +562,10 @@ class J4J_Spawner(Spawner):
                     self.user_options = db_spawner.user_options
                     self.log.debug("userserver={} - Start with options from first server_start for this spawner: {}".format(self._log_name.lower(), self.user_options))
                     return ""
-            if not self.html_code == "":
-                if self.useraccs_complete: 
-                    return self.html_code
+            # since we update the hpc_infos external we have to build it, even if it was build for this spawner already
+            #if not self.html_code == "":
+            #    if self.useraccs_complete:
+            #        return self.html_code
             db_user = self.user.db.query(orm.User).filter(orm.User.name == self.user.name).first()
             if db_user:
                 self.user.db.refresh(db_user)
