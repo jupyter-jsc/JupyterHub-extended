@@ -35,7 +35,9 @@ class J4J_HomeHandler(HomeHandler):
                                     # can't use user.spawners because the stop method of User pops named servers from user.spawners when they're stopped spawners=user._orm_spawners,
                                     default_server=user.spawner,
                                     spawnable_dic=user.authenticator.spawnable_dic.get(user.name, {}))
+        
         state = await user.get_auth_state()
+        self.log.debug("Current user state({}): {}".format(user.name, state))
         if state.get('dispatch_updates', False):
             uuidcode = uuid.uuid4().hex
             self.log.info("uuidcode={} - action=accountupdate - Received new information for {} . Update it via ssh".format(uuidcode, user.name))
