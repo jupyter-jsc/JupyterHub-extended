@@ -4,12 +4,12 @@ Created on May 10, 2019
 @author: kreuzer
 '''
 
-import uuid
+#import uuid
 
 from jupyterhub.handlers.pages import HomeHandler
 from jupyterhub.utils import url_path_join
 from tornado import web
-from j4j_authenticator.utils import get_user_dic
+#from j4j_authenticator.utils import get_user_dic
 
 class J4J_HomeHandler(HomeHandler):
     @web.authenticated
@@ -35,7 +35,7 @@ class J4J_HomeHandler(HomeHandler):
                                     # can't use user.spawners because the stop method of User pops named servers from user.spawners when they're stopped spawners=user._orm_spawners,
                                     default_server=user.spawner,
                                     spawnable_dic=user.authenticator.spawnable_dic.get(user.name, {}))
-        
+        """
         state = await user.get_auth_state()
         if state.get('dispatch_updates', False):
             uuidcode = uuid.uuid4().hex
@@ -48,5 +48,6 @@ class J4J_HomeHandler(HomeHandler):
             state['dispatch_updates'] = False
             await user.save_auth_state(state)
             #html = html.replace("<!-- $INFOMESSAGE -->", '<p style="color: #004671">We\'ve updated your hpc accounts.</p>')
+        """
         self.finish(html)
 

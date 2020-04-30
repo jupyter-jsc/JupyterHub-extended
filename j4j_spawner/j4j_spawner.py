@@ -571,8 +571,9 @@ class J4J_Spawner(Spawner):
                 self.user.db.refresh(db_user)
                 self.user.encrypted_auth_state = db_user.encrypted_auth_state
             state = await self.user.get_auth_state()
-            if state.get('useraccs_complete', False) == self.useraccs_complete and not self.html_code == "": 
-                return self.html_code
+            # since we update the hpc_infos external we have to build it, even if it was build for this spawner already
+            #if state.get('useraccs_complete', False) == self.useraccs_complete and not self.html_code == "": 
+            #    return self.html_code
             user_dic = state.get('user_dic', {})
             self.useraccs_complete = state.get('useraccs_complete', False)
             # save state in db
