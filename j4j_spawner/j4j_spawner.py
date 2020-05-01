@@ -429,8 +429,8 @@ class J4J_Spawner(Spawner):
                                                                           method,
                                                                           method_args)
             if status_code != 202:
-                self.log.warning("uuidcode={} - J4J_Orchestrator Post failed. J4J_Worker Response: {} {} {}".format(uuidcode, text.strip(), status_code, response_header))
-                raise Exception("uuidcode={} - J4J_Worker Post failed. Throw exception because of wrong status_code: {}".format(uuidcode, status_code))
+                self.log.warning("uuidcode={} - J4J_Orchestrator Post failed. J4J_UNICORE Response: {} {} {}".format(uuidcode, text.strip(), status_code, response_header))
+                raise Exception("uuidcode={} - J4J_UNICORE Post failed. Throw exception because of wrong status_code: {}".format(uuidcode, status_code))
             else:
                 self.log.debug("uuidcode={} - Spawn successful sent to J4J_Orchestrator. Port: {}".format(uuidcode, text))
                 self.port = int(text.strip().replace('"', '').replace("'", ''))
@@ -475,7 +475,7 @@ class J4J_Spawner(Spawner):
             urls = json.load(f)
         self.remove_proxys(uuidcode, urls)
         if self.stopped:
-            self.log.debug("userserver={} - uuidcode={} Already stopped by J4J_Orchestrator or J4J_Worker".format(self._log_name.lower(), uuidcode))
+            self.log.debug("userserver={} - uuidcode={} Already stopped by J4J_Orchestrator or J4J_UNICORE".format(self._log_name.lower(), uuidcode))
             self.stopped = False
             return
         db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
