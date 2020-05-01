@@ -1,8 +1,10 @@
 import json
 
 # create dic from dispatch-entry string
-def get_user_dic(hpc_infos, partitions_path):
+def get_user_dic(hpc_infos, partitions_path, unicore_path):
     dic = {}
+    with open(unicore_path) as f:
+        unicore = json.load(f)
     for i in hpc_infos:
         infos = i.lower().split(',')
         # infos: [account, system[_partition], project, email]
@@ -17,10 +19,13 @@ def get_user_dic(hpc_infos, partitions_path):
         if not project in dic.get(system).get(account).keys():
             dic[system][account][project] = {}
         dic[system][account][project]['LoginNode'] = {}
+        if len(unicore.get(system, {}).get('LoginNodeVis', [])) > 0:
+            dic[system][account][project]['LoginNodeVis'] = {}
         if len(system_partition) == 1:
             dic[system][account][project]['batch'] = {}
         elif len(system_partition) == 2:
-            dic[system][account][project][system_partition[1]] = {}
+            partition = unicore.get(system, {}).get("partition_mapping", {}).get(system_partition[1], system_partition[1])
+            dic[system][account][project][partition] = {}
     return fit_partition(dic, partitions_path)
 
 # Remove partitions from user_account dic, which are not supported
@@ -48,7 +53,7 @@ def stripper(data):
         if isinstance(v, dict):
             v = stripper(v)
         #if k in ('LoginNode', 'JURECA', 'JURON', 'JUWELS') or v not in (u'', None, {}): 
-        if k in ('LoginNode') or v not in (u'', None, {}):
+        if k in ('LoginNode', 'LoginNodeVis') or v not in (u'', None, {}):
             ret[k] = v
     return ret
 

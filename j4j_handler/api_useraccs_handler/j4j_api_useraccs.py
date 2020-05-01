@@ -9,7 +9,7 @@ import os
 import json
 
 from jupyterhub.apihandlers.base import APIHandler
-from jupyterhub.orm import APIToken, User
+from jupyterhub.orm import User
 from .utils import fit_partition
 
 class J4J_APIUserAccsHandler(APIHandler):

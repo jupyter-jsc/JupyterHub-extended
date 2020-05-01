@@ -29,13 +29,15 @@ def create_spawn_header(uuidcode, expire, refreshtoken, jhubtoken, accesstoken, 
         spawn_header['authorizeurl'] = os.environ.get('JSCLDAP_AUTHORIZE_URL', 'https://unity-jsc.fz-juelich.de/jupyter-oauth2-as/oauth2-authz')
     return spawn_header
 
-def create_spawn_data(servername, Environment, partition, reservation, Resources, system, Checkboxes):
+def create_spawn_data(servername, Environment, partition, reservation, Resources, service, dashboard, system, Checkboxes):
     spawn_data = {
         "servername": servername,
         "Environment": Environment.copy(),
         "partition": partition,
         "reservation": reservation,
         "Resources": Resources.copy(),
+        "service": service,
+        "dashboard": dashboard,
         "system": system,
         "Checkboxes": Checkboxes.copy()
         }

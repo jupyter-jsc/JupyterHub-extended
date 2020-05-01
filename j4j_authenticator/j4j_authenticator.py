@@ -18,7 +18,6 @@ from tornado.httputil import url_concat
 from oauthenticator.oauth2 import OAuthLoginHandler, OAuthCallbackHandler
 from oauthenticator.generic import GenericOAuthenticator
 
-from .j4j_logout import J4J_LogoutHandler
 from .utils import get_user_dic 
 from j4j_authenticator import utils
 import time
@@ -61,11 +60,16 @@ class JSCLDAPLoginHandler(OAuthLoginHandler, JSCLDAPEnvMixin):
         self.log.debug('OAuth redirect: %r', redirect_uri)
         state = self.get_state()
         self.set_state_cookie(state)
+        extra_parameters = {'state': state}
+        jscldap_extra_parameters = os.environ.get('JSCLDAP_EXTRA_PARAMETERS', '')
+        for i in jscldap_extra_parameters.split():
+            keyvalue = i.split('=')
+            extra_parameters[keyvalue[0]] = keyvalue[1]
         self.authorize_redirect(
             redirect_uri=redirect_uri,
             client_id=unity[self.authenticator.jscldap_token_url]['client_id'],
             scope=unity[self.authenticator.jscldap_authorize_url]['scope'],
-            extra_params={'state': state},
+            extra_params=extra_parameters,
             response_type='code')
 
 class JSCUsernameCallbackHandler(OAuthCallbackHandler):
@@ -153,6 +157,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         help="Authorize URL for JSCLdap Login"
     )
 
+    jscldap_extra_parameters = Unicode(
+        os.environ.get('JSCLDAP_EXTRA_PARAMETERS', ''),
+        config=True,
+        help="Extra Parameters for the GET request to Unity"
+    )
+
     jscusername_callback_url = Unicode(
         os.getenv('JSCUSERNAME_CALLBACK_URL', 'https://jupyter-jsc.fz-juelich.de/hub/jscusername_callback'),
         config=True,
@@ -217,11 +227,19 @@ class BaseAuthenticator(GenericOAuthenticator):
         help = "Path to the filled_resources file"
     )
 
-    unicore = Unicode( 
+    unicore_infos = Unicode( 
+        os.environ.get('UNICORE_INFOS', ''),
+        config = True,
+        help = "Path to the unicore.json file, with all information about u/x"
+    )
+
+    unicore_check = Unicode( 
         os.environ.get('UNICORE_PATH', ''),
         config = True,
-        help = "Path to the unicore.json file"
+        help = "Path to the unicore.json file, which systems should be checked via UNICORE/X"
     )
+
+
 
     proxy_secret = Unicode( # Used outside Authenticator
         os.environ.get('PROXY_SECRET', ''),
@@ -245,6 +263,12 @@ class BaseAuthenticator(GenericOAuthenticator):
         os.environ.get("RESERVATION_PATH", ""),
         config = True,
         help = "Path to all reservations"
+    )
+    
+    dashboards_path = Unicode(
+        os.environ.get("DASHBOARDS_PATH", ""),
+        config = True,
+        help = "Path to dashboards infos"
     )
     
     enable_auth_state = Bool(
@@ -291,7 +315,6 @@ class BaseAuthenticator(GenericOAuthenticator):
             
 
     login_handler = [JSCLDAPLoginHandler, JSCUsernameLoginHandler, HDFAAILoginHandler]
-    logout_handler = J4J_LogoutHandler
     callback_handler = [JSCLDAPCallbackHandler, JSCUsernameCallbackHandler, HDFAAICallbackHandler]
 
     def get_handlers(self, app):
@@ -301,8 +324,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             (r'/jscusername_login', self.login_handler[1]),
             (r'/jscusername_callback', self.callback_handler[1]),
             (r'/hdfaai_login', self.login_handler[2]),
-            (r'/hdfaai_callback', self.callback_handler[2]),
-            (r'/logout', self.logout_handler)
+            (r'/hdfaai_callback', self.callback_handler[2])
         ]
 
     def get_callback_url(self, handler=None, authenticator_name=""):
@@ -361,7 +383,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                     #self.log.debug("{} - Spawner {} is not active (has no server_id)".format(user.name, db_spawner.name))
                     spawner[db_spawner.name]['active'] = False
                 if db_spawner.user_options and 'system' in db_spawner.user_options.keys():
-                    if db_spawner.user_options.get('system').upper() == 'DOCKER':
+                    if db_spawner.user_options.get('system').upper() == 'DOCKER' or db_spawner.user_options.get('system') == "HDF-Cloud":
                         spawner[db_spawner.name]['spawnable'] = True
                     else:
                         if db_spawner.user_options.get('reservation', 'None') != 'None' and db_spawner.user_options.get('reservation', 'None') != '' and db_spawner.user_options.get('reservation', 'None') != None:
@@ -586,6 +608,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'expire': expire,
                                'oauth_user': resp_json,
                                'user_dic': {},
+                               'dispatch_updates': False,
                                'useraccs_complete': True,
                                'scope': scope,
                                'login_handler': 'hdfaai',
@@ -654,7 +677,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                           validate_cert=self.tls_verify)
         resp = await http_client.fetch(req)
         resp_json = json.loads(resp.body.decode('utf8', 'replace'))
-
+        self.log.debug("uuidcode={} - UserInfo: {}".format(uuidcode, resp_json))
         username_key = unity[self.jscldap_authorize_url]['username_key']
 
         if not resp_json.get(username_key):
@@ -672,7 +695,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         if not resp_json_exp.get(tokeninfo_exp_key):
             self.log.error("uuidcode={} - Tokeninfo contains no key {}: {}".format(uuidcode, tokeninfo_exp_key, self.remove_secret(resp_json_exp)))
             return
-
+        self.log.debug("uuidcode={} - TokenInfo: {}".format(uuidcode, resp_json_exp))
         expire = str(resp_json_exp.get(tokeninfo_exp_key))
         username = resp_json.get(username_key).split('=')[1]
         username = self.normalize_username(username)
@@ -711,7 +734,7 @@ class BaseAuthenticator(GenericOAuthenticator):
         if len(hpc_infos) == 0:
             try:
                 self.log.debug("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
-                hpc_infos = self.get_hpc_infos_via_ssh()
+                hpc_infos = self.get_hpc_infos_via_ssh(uuidcode, username)
                 self.log.debug("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
             except:
                 self.log.exception("uuidcode={} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
@@ -721,9 +744,10 @@ class BaseAuthenticator(GenericOAuthenticator):
             else:
                 hpc_infos = [hpc_infos]
 
-        # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
-        user_accs = get_user_dic(hpc_infos, self.resources)
-
+        # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet        
+        self.log.debug("uuidcode={} - hpc_infos: {}".format(uuidcode, hpc_infos))
+        user_accs = get_user_dic(hpc_infos, self.resources, self.unicore_infos)
+        self.log.debug("uuidcode={} - User_accs dic: {}".format(uuidcode, user_accs))
         # Check for HPC Systems in self.unicore
         waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
         return {
@@ -734,6 +758,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'expire': expire,
                                'oauth_user': resp_json,
                                'user_dic': user_accs,
+                               'dispatch_updates': False,
                                'useraccs_complete': not waitforaccupdate,
                                'scope': scope,
                                'login_handler': 'jscldap',
@@ -858,7 +883,7 @@ class BaseAuthenticator(GenericOAuthenticator):
             if pattern.match(username):
                 try:
                     self.log.debug("uuidcode={} - Try to get HPC_Infos via ssh".format(uuidcode))
-                    hpc_infos = self.get_hpc_infos_via_ssh()
+                    hpc_infos = self.get_hpc_infos_via_ssh(uuidcode, username)
                     self.log.debug("uuidcode={} - HPC_Infos afterwards: {}".format(uuidcode, hpc_infos))
                 except:
                     self.log.exception("uuidcode={} - Could not get HPC information via ssh for user {}".format(uuidcode, username))
@@ -869,7 +894,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 hpc_infos = [hpc_infos]
 
         # Create a dictionary. So we only have to check for machines via UNICORE/X that are not known yet
-        user_accs = get_user_dic(hpc_infos, self.resources)
+        user_accs = get_user_dic(hpc_infos, self.resources, self.unicore_infos)
 
         # Check for HPC Systems in self.unicore
         waitforaccupdate = self.get_hpc_infos_via_unicorex(uuidcode, username, user_accs, accesstoken)
@@ -881,6 +906,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                                'expire': expire,
                                'oauth_user': resp_json,
                                'user_dic': user_accs,
+                               'dispatch_updates': False,
                                'useraccs_complete': not waitforaccupdate,
                                'scope': scope,
                                'login_handler': 'jscusername',
@@ -894,7 +920,7 @@ class BaseAuthenticator(GenericOAuthenticator):
                 j4j_paths = json.load(f)
             with open(j4j_paths.get('token', {}).get('orchestrator', '<no_token_found>'), 'r') as f:
                 orchestrator_token = f.read().rstrip()
-            with open(self.unicore, 'r') as f:
+            with open(self.unicore_check, 'r') as f:
                 unicore_file = json.load(f)
             machine_list = unicore_file.get('machines', [])
             # remove machines that are already served via Unity or ssh
