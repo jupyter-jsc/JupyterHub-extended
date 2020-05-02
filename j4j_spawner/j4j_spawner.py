@@ -584,6 +584,8 @@ class J4J_Spawner(Spawner):
             user_dic, maintenance = get_maintenance(user_dic, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
                 self.log.debug("userserver={} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
+            if self.user.name == "t.kreuzer@fz-juelich.de":
+                self.log.debug("User_dic: {}".format(user_dic))
             reservations_var = reservations(user_dic, self.reservation_paths, self.slurm_systems)
             with open(self.spawn_config_path, 'r') as f:
                 spawn_config = json.load(f)
