@@ -679,11 +679,7 @@ class J4J_Spawner(Spawner):
             return ret
         # Resources
         ret['Resources'] = {}
-        self.log.debug("DEBUGxx: {}".format(ret))
-        self.log.debug("DEBUGxx: {}".format(filled_resources))
-        for res_name, res_infos in filled_resources.get(ret['service'], {}).get(ret['partition'], {}).items():
-            self.log.debug("DEBUGxx: {}, {}".format(res_name, res_infos))
+        for res_name, res_infos in filled_resources.get(ret['system'], {}).get(ret['partition'], {}).items():
             s = 'resource_{}_name'.format(res_name.lower())
-            ret['Resources'][res_name] = form_data[s][0]*res_infos.get('DIVISOR', 1)
-        self.log.debug("DEBUGxx: {}".format(ret))
+            ret['Resources'][res_name] = int(form_data[s][0])*res_infos.get('DIVISOR', 1)
         return ret
