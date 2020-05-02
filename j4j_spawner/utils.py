@@ -65,17 +65,17 @@ def get_maintenance(user_accs, urls_paths, tunnel_token):
     return ret, maintenance
 
 # add reservations
-def reservations(data, reservation_paths):
+def reservations(data, reservation_paths, slurm_systems):
     ret = {}
     for name, path in reservation_paths.items():
         with open(path) as f:
             s = f.read()
-        if name.lower() in ['jureca', 'juwels']:
-            ret[name] = juwels_jureca_reservation(name.lower(), s, data)
+        if name.lower() in slurm_systems:
+            ret[name] = slurm_reservation(name.lower(), s, data)
     return ret
 
 # reservation strings to dic
-def juwels_jureca_reservation(name, s, data):
+def slurm_reservation(name, s, data):
     li = s.split("ReservationName=")
     dic = {}
     ret = {'Account': {}, 'Project': {}}

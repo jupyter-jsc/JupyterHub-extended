@@ -12,7 +12,7 @@ import time
 import datetime
 import os
 
-from traitlets import Unicode, Dict
+from traitlets import Unicode, Dict, List
 from asyncio import sleep
 from contextlib import closing
 
@@ -36,6 +36,7 @@ class J4J_Spawner(Spawner):
     spawn_config_path = Unicode(config=True, help='')
     dashboards_path = Unicode(config=True, help='')
     project_checkbox_path = Unicode(config=True, help='')
+    slurm_systems = List(config=True, help='', default_value=[])
     html_code = ""
 
     # Variables for the jupyter application
@@ -583,7 +584,7 @@ class J4J_Spawner(Spawner):
             user_dic, maintenance = get_maintenance(user_dic, self.user.authenticator.j4j_urls_paths, tunnel_token)
             if len(maintenance) > 0:
                 self.log.debug("userserver={} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
-            reservations_var = reservations(user_dic, self.reservation_paths)
+            reservations_var = reservations(user_dic, self.reservation_paths, self.slurm_systems)
             with open(self.spawn_config_path, 'r') as f:
                 spawn_config = json.load(f)
             with open(self.user.authenticator.unicore_infos, 'r') as f:
@@ -601,7 +602,7 @@ class J4J_Spawner(Spawner):
                                                         checkboxes,
                                                         maintenance,
                                                         ux,
-                                                        spawn_config.get('overallText'))
+                                                        spawn_config.get('overallText', {}))
                 #self.html_code = create_html(spawn_config.get('firstSorted', []), spawn_config.get('secondSorted', {}), user_dic, dashboards, reservations_var, checkboxes, maintenance, ux, spawn_config.get('overallText'))
             elif state.get('spawner_service', {}).get(self.name, 'Dashboard') == 'Dashboard':
                 self.html_code = create_html_dashboard(spawn_config.get('dashboard_sorted', []),
