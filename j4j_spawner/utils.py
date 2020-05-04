@@ -70,8 +70,8 @@ def reservations(data, reservation_paths, slurm_systems):
     for name, path in reservation_paths.items():
         with open(path) as f:
             s = f.read()
-        if name.lower() in slurm_systems:
-            ret[name] = slurm_reservation(name.lower(), s, data)
+        if name.upper() in slurm_systems:
+            ret[name] = slurm_reservation(name.upper(), s, data)
     return ret
 
 # reservation strings to dic
@@ -93,7 +93,6 @@ def slurm_reservation(name, s, data):
         except:
             del dic[lineList[0]]
             continue
-    name = name.upper()
     if name in data.keys():
         for account in data.get(name).keys():
             for reservation, infos in dic.items():
