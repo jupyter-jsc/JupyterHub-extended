@@ -56,6 +56,7 @@ class J4J_Spawner(Spawner):
     login_handler = ''
     useraccs_complete = False
     error_message = ""
+    start_uuid = ""
     service = ""
     dashboard = ""
     system = ""
@@ -94,6 +95,7 @@ class J4J_Spawner(Spawner):
             self.sendmail = state.get('sendmail', False)
             self.login_handler = state.get('loginhandler', '')
             self.useraccs_complete = state.get('useraccs_complete', False)
+            self.start_uuid = state.get('start_uuid', '')
             self.service = state.get('service', "")
             self.dashboard = state.get('dashboard', "")
             self.system = state.get('system', "")
@@ -112,6 +114,7 @@ class J4J_Spawner(Spawner):
             self.sendmail = False
             self.login_handler = ''
             self.useraccs_complete = False
+            self.start_uuid = ""
             self.service = ""
             self.dashboard = ""
             self.system = ""
@@ -133,6 +136,7 @@ class J4J_Spawner(Spawner):
         state['sendmail'] = self.sendmail
         state['loginhandler'] = self.login_handler
         state['useraccs_complete'] = self.useraccs_complete
+        state['start_uuid'] = self.start_uuid
         state['service'] = self.service
         state['dashboard'] = self.dashboard
         state['system'] = self.system
@@ -237,10 +241,11 @@ class J4J_Spawner(Spawner):
             proxy_urls.append('/api/routes{baseurl}api/users/{username}/servers/{servername}/progress'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
             proxy_urls.append('/api/routes{baseurl}api/jobstatus/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
             proxy_urls.append('/api/routes{baseurl}api/cancel/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
+            proxy_urls.append('/api/routes{baseurl}api/uxnotification/{username}/{suidlen}_{suid}_{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, suidlen=len(self.start_uuid), suid=self.start_uuid, servername=self.name))
+            
             proxy_json = { 'target': target }
             if self.service == "Dashboard":
                 self.log.debug("{} - Route everything but /voila to an error page / non existent page".format(uuidcode))
-                #https://jupyter-jsc.fz-juelich.de/integration/user/t.kreuzer@fz-juelich.de/dashboard_1/voila/render/bqplot_vuetify_example.ipynb?
                 proxy_urls_deny = []
                 proxy_urls_deny.append('/api/routes{shortbaseurl}user/{username}/{servername}/tree'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
                 proxy_urls_deny.append('/api/routes{shortbaseurl}user/{username}/{servername}/lab'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
@@ -259,6 +264,8 @@ class J4J_Spawner(Spawner):
     def remove_proxys(self, uuidcode, urls=None):
         # delete route from proxy
         self.log.debug("userserver={} - uuidcode={} - Remove all proxy routes".format(self._log_name.lower(), uuidcode))
+        db_spawner = self.user.db.query(orm.Spawner).filter(orm.Spawner.id == self.orm_spawner.id).first()
+        self.load_state(db_spawner.state)
         proxy_urls = []
         try:
             if not urls:
@@ -274,10 +281,9 @@ class J4J_Spawner(Spawner):
             proxy_urls.append('/api/routes{baseurl}api/users/{username}/servers/{servername}/progress'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
             proxy_urls.append('/api/routes{baseurl}api/jobstatus/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
             proxy_urls.append('/api/routes{baseurl}api/cancel/{username}/{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, servername=self.name))
+            proxy_urls.append('/api/routes{baseurl}api/uxnotification/{username}/{suidlen}_{suid}_{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, suidlen=len(self.start_uuid), suid=self.start_uuid, servername=self.name))
             # voila urls
             proxy_urls.append('/api/routes{shortbaseurl}{username}/{servername}/dashboard'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=self.user.escaped_name, servername=self.name))
-            if self.service == "Dashboard":
-                self.log.debug("{} - Removes routes to0 everything but /voila to an error page / non existent page".format(uuidcode))
             with open(self.user.authenticator.proxy_secret, 'r') as f:
                 proxy_secret = f.read().strip()
             proxy_secret = proxy_secret.strip()[len('export CONFIGPROXY_AUTH_TOKEN='):]
@@ -306,6 +312,7 @@ class J4J_Spawner(Spawner):
 
         # Create uuidcode to track this specific Call through the webservices
         uuidcode = uuid.uuid4().hex
+        self.start_uuid = uuidcode
         self.log.info("userserver={}, uuidcode={}, username={}, action=start, system={}, account={}, sendmail={}, project={}, partition={}, reservation={}, checkboxes={}, resources={}".format(self._log_name.lower(), uuidcode, self.user.name, self.user_options.get('system', ''), self.user_options.get('account', ''), self.user_options.get('sendmail', False), self.user_options.get('project', ''), self.user_options.get('partition', ''), self.user_options.get('reservation', ''), self.user_options.get('Checkboxes', []), self.user_options.get('Resources', {})))
         # get a few JupyterHub variables, which we will need to create spawn_header and spawn_data
         db_user = self.user.db.query(orm.User).filter(orm.User.name == self.user.name).first()

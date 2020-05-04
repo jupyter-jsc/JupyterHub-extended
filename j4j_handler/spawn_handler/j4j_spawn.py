@@ -84,6 +84,10 @@ class J4J_SpawnHandler(SpawnHandler):
         proxy_urls.append('/api/routes{baseurl}api/users/{username}/servers/{servername}/progress'.format(baseurl=self.hub.base_url, username=user.escaped_name, servername=server_name))
         proxy_urls.append('/api/routes{baseurl}api/jobstatus/{username}/{servername}'.format(baseurl=self.hub.base_url, username=user.escaped_name, servername=server_name))
         proxy_urls.append('/api/routes{baseurl}api/cancel/{username}/{servername}'.format(baseurl=self.hub.base_url, username=user.escaped_name, servername=server_name))
+        try:
+            proxy_urls.append('/api/routes{baseurl}api/uxnotification/{username}/{suidlen}_{suid}_{servername}'.format(baseurl=self.hub.base_url, username=self.user.escaped_name, suidlen=len(db_spawner.state.start_uuid), suid=db_spawner.state.start_uuid, servername=server_name))
+        except:
+            self.log.exception("Could not setup proxy route for uxnotification")
         # voila urls
         proxy_urls.append('/api/routes{shortbaseurl}{username}/{servername}/dashboard'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=user.escaped_name, servername=server_name))
         proxy_urls.append('/api/routes{shortbaseurl}user/{username}/{servername}/tree'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=user.escaped_name, servername=server_name))

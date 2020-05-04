@@ -77,10 +77,23 @@ class J4J_APIUXHandler(APIHandler):
                 return
             self.log.info("uuidcode={} - Job is finished. Stop it via JupyterHub.".format(uuidcode))
             try:
+                try:
+                    uuidlen = server_name.split('_')[0]
+                    strlen = len(uuidlen) + int(uuidlen) + 2
+                    start_uuid = server_name.split('_')[1]
+                    server_name = server_name[strlen:]
+                except:
+                    start_uuid = None
+                    self.log.exception("uuidcode={} - Looks like servername {} has no uuid in it".format(uuidcode, server_name))
                 db_spawner = user.db.query(Spawner).filter(Spawner.name == server_name).filter(Spawner.user_id == user.orm_user.id).first()
                 if db_spawner:
                     user.db.refresh(db_spawner)
                     user.spawners[server_name].load_state(db_spawner.state)
+                if start_uuid:
+                    if user.spawners[server_name].start_uuid != start_uuid:
+                        self.log.info("uuidcode={} - That's not the uuid this server was started with. So we ignore this U/X notification, because it's for an already stopped server.")
+                        self.set_status(200)
+                        return
                 if user.spawners[server_name].service == "Dashboard" and jdata.get('exitCode', '') == "127":
                     try:
                         with open(user.authenticator.dashboards_path, 'r') as f:
