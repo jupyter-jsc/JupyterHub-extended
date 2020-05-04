@@ -91,7 +91,7 @@ class J4J_APIUXHandler(APIHandler):
                     user.spawners[server_name].load_state(db_spawner.state)
                 if start_uuid:
                     if user.spawners[server_name].start_uuid != start_uuid:
-                        self.log.info("uuidcode={} - That's not the uuid this server was started with. So we ignore this U/X notification, because it's for an already stopped server.")
+                        self.log.info("uuidcode={} - That's not the uuid this server was started with. So we ignore this U/X notification, because it's for an already stopped server.".format(uuidcode))
                         self.set_status(200)
                         return
                 if user.spawners[server_name].service == "Dashboard" and jdata.get('exitCode', '') == "127":
