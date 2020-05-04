@@ -186,10 +186,15 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                                 route_user = route_as_list[3]
                                 route_servername = route_as_list[4]
                                 spawn_skip = True
-                        elif route_as_list[1] == 'user' or route_as_list[1] == 'spawn':
+                        elif route_as_list[1] in ['user', 'spawn']:
                             route_user = route_as_list[2]
                             route_servername = route_as_list[3]
-                            spawn_skip = True
+                            try:
+                                # skip /tree and /lab , that's the routes we want to deny for dashboards
+                                if route_as_list[1] == 'user' and route_as_list[4] not in ['lab', 'tree']:
+                                    spawn_skip = True
+                            except:
+                                spawn_skip = True
                     else:
                         if route_as_list[0] == 'hub':
                             if route_as_list[1] == 'api':
@@ -203,10 +208,15 @@ class J4J_Proxy(ConfigurableHTTPProxy):
                                 route_user = route_as_list[2]
                                 route_servername = route_as_list[3]
                                 spawn_skip = True
-                        elif route_as_list[0] == 'user' or route_as_list[0] == 'spawn':
+                        elif route_as_list[0] in ['user', 'spawn']:
                             route_user = route_as_list[1]
                             route_servername = route_as_list[2]
-                            spawn_skip = True
+                            try:
+                                # skip /tree and /lab , that's the routes we want to deny for dashboards
+                                if route_as_list[0] == 'user' and route_as_list[4] not in ['lab', 'tree']:
+                                    spawn_skip = True
+                            except:
+                                spawn_skip = True
                 except:
                     self.log.debug("Err: {}".format(traceback.format_exc()))
                     route_user = None
