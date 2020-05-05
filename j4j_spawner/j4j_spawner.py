@@ -592,11 +592,11 @@ class J4J_Spawner(Spawner):
             if len(maintenance) > 0:
                 self.log.debug("userserver={} - Systems in Maintenance: {}".format(self._log_name.lower(), maintenance))
             reservations_var = reservations(user_dic, self.reservation_paths, self.slurm_systems)
-            if self.user.name == "t.kreuzer@fz-juelich.de":
-                self.log.debug("User_dic: {}".format(user_dic))
-                self.log.debug("Reservations_paths: {}".format(self.reservation_paths))
-                self.log.debug("slurm_systems: {}".format(self.slurm_systems))
-                self.log.debug("Reservations_var: {}".format(reservations_var))
+            #if self.user.name in self.user.authenticator.admin_users:
+            #    self.log.debug("User_dic: {}".format(user_dic))
+            #    self.log.debug("Reservations_paths: {}".format(self.reservation_paths))
+            #    self.log.debug("slurm_systems: {}".format(self.slurm_systems))
+            #    self.log.debug("Reservations_var: {}".format(reservations_var))
             with open(self.spawn_config_path, 'r') as f:
                 spawn_config = json.load(f)
             with open(self.user.authenticator.unicore_infos, 'r') as f:
@@ -614,8 +614,7 @@ class J4J_Spawner(Spawner):
                                                         checkboxes,
                                                         maintenance,
                                                         ux,
-                                                        spawn_config.get('overallText', {}))
-                #self.html_code = create_html(spawn_config.get('firstSorted', []), spawn_config.get('secondSorted', {}), user_dic, dashboards, reservations_var, checkboxes, maintenance, ux, spawn_config.get('overallText'))
+                                                        spawn_config.get('overallText', {}))              
             elif state.get('spawner_service', {}).get(self.name, 'Dashboard') == 'Dashboard':
                 self.html_code = create_html_dashboard(spawn_config.get('dashboard_sorted', []),
                                                        user_dic,
@@ -627,7 +626,6 @@ class J4J_Spawner(Spawner):
                                                        spawn_config.get('overallText'))
         except Exception:
             self.log.exception("Could not build html page")
-            #self.log.exception("{} - Could not build html page".format(self._log_name.lower()))
         return self.html_code
 
 
