@@ -4,7 +4,6 @@ Created on May 17, 2019
 @author: Tim Kreuzer
 '''
 
-
 def inputs(first, show=False):
     ret = ''
     ret += '<input autocomplete="off" id="first_input" name="first_input" value="'+first+'" style="display:'+('display' if show else 'none')+'">\n'
@@ -35,114 +34,45 @@ def html_resource(dic, div_id):
     ret += '  </div>\n'
     return ret
 
-def create_html_jupyterlab(second_list_all, user_dic, reservations_dic, checkboxes, maintenance, unicorex, overall_infos={}):
-    html = ""
-    if len(maintenance) > 0:
-        html += '<h3 class="maintenance_j4j">The following systems are not available right now: {}</h3>\n'.format(', '.join(maintenance))
-        for m in maintenance:
-            if m in second_list_all:
-                second_list_all.remove(m)
-            if m in user_dic.keys():
-                del user_dic[m]
 
-    second = ""
-    second_list = []
-    for isecond in second_list_all:
-        if isecond in user_dic.keys():
-            if len(second_list) == 0:
-                second = isecond
-            second_list.append(isecond)
-    third_list = sorted(list(user_dic.get(second, {}).keys()), key=lambda s: s.casefold())
-    fourth_list = []
-    fifth_list = []
-    sixth_list = []
-    if len(third_list) > 0:
-        fourth_list = sorted(list(user_dic.get(second, {}).get(third_list[0], {}).keys()), key=lambda s: s.casefold())
-    if len(fourth_list) > 0:
-        fifth_list = list(user_dic.get(second, {}).get(third_list[0], {}).get(fourth_list[0], {}).keys())
-    if len(fifth_list) > 0:
-        sixth_list = list(user_dic.get(second, {}).get(third_list[0], {}).get(fourth_list[0], {}).get(fifth_list[0], {}).keys())
-        
-    html += '<div class="j4j">\n'
-    script = "<script>\n"
-    html += inputs("JupyterLab")
-
-    
-    html += new_dropdown("firstdd", "Service", ["JupyterLab"], "onChangeDD1", "onClickDD1", False)
-    #html += new_dropdown("dashboarddd", "Dashboard", dashboard_list, "onChangeDDDash", "onClickDDDash")
-    html += new_dropdown("seconddd", "System", second_list, "onChangeDD2", "onClickDD2")
-    html += new_dropdown("thirddd", "Account", third_list, "onChangeDD3", "onClickDD3")
-    html += new_dropdown("fourthdd", "Project", fourth_list, "onChangeDD4", "onClickDD4")
-    html += new_dropdown("fifthdd", "Partition", fifth_list, "onChangeDD5", "onClickDD5")
-    html += new_dropdown("sixthdd", "Reservation", sixth_list, "onChangeDD6", "onClickDD6")
-
-    t1, t2 = checkbox("reservation_cb", { "htmltext": "Show reservation info" }, "reservation")
-    html += t1
-    script += t2
-    script += reservation_checkbox_script(reservations_dic)
-    for service, v0 in checkboxes.items():
-        for system, v1 in v0.items():
-            for account, v2 in v1.items():
-                for project, v3 in v2.items():
-                    for partition, v4 in v3.items():
-                        for cb_name, cb_infos in v4.items():
-                            t1, t2 = checkbox(service+"_"+system+"_"+account+"_"+project+"_"+partition+"_"+cb_name, cb_infos, cb_name)
-                            html += t1
-                            script += t2
-    script += checkbox_scripts(checkboxes)
-
-    reservations = {}
-    for system, reservation_types in reservations_dic.items():
-        for reservation_infos in reservation_types.values():
-            for reservation_values in reservation_infos.values():
-                for reservation_name, reservation_value in reservation_values.items():
-                    if not system in reservations.keys():
-                        reservations[system] = {}
-                    if not reservation_name in reservations.get(system, {}).keys():
-                        reservations[system][reservation_name] = reservation_value
-    for system, reservation in reservations.items():
-        html += reservationInfo("reservation_{}_{}".format(system, "None"), {}, False)
-        for name, infos in reservation.items():
-            html += reservationInfo("reservation_{}_{}".format(system, name), infos, False)
-    
-    nodes =  {"MINMAX": [1, 256], "TEXT": "Nodes [_min_, _max_]", "DIVISOR": 1, "DEFAULT": 1}
-    runtime = {"MINMAX": ["60", "86400"], "TEXT": "Runtime (min) [_min_, _max_]", "DIVISOR": 60, "DEFAULT": 30}
-    gpus = {"MINMAX": [1, 4], "TEXT": "GPUs [_min_, _max_]", "DIVISOR": 1, "DEFAULT": "_max_"}
-    cpus_per_node= {"MINMAX": [1, 48], "TEXT": "CPUs per node [_min_, _max_]", "DIVISOR": 1, "DEFAULT": "24"}
-    html += html_resource(nodes, 'resource_nodes')
-    html += html_resource(runtime, 'resource_runtime')
-    html += html_resource(gpus, 'resource_gpus')
-    html += html_resource(cpus_per_node, 'resource_cpus_per_node')
-    script += resource_scripts(["nodes", "runtime", "gpus", "cpus_per_node"])   
-    html += system_readmore(unicorex)
-    html += overall_readmore(overall_infos)
-    html += '</div>\n'
-
-    script += onchange_dd6()
-    script += onchange_dd5(user_dic, reservations_dic)
-    script += onchange_dd4(user_dic, {})
-    script += onchange_dd3(user_dic)
-    script += onchange_dd2(user_dic)
-    #script += onchange_dddash(dashboard_list, dashboards_dic)
-    script += onchange_dd1(["JupyterLab"], second_list)
-    script += onclick_dd6()
-    script += onclick_dd5()
-    script += onclick_dd4()
-    script += onclick_dd3()
-    script += onclick_dd2()
-    #script += onclick_dddash()
-    script += onclick_dd1()
-    script += dashinfo_hide({}.keys())
-    script += init_script("JupyterLab")
-    script += system_readmore_hide(unicorex)
-    script += "</script>\n"
-
-    html += script
-    return html
-
+def filter_dashboard(user_dic, dashboards_dic):
+    dashboard_filtered = {}
+    for dboard in dashboards_dic.keys():
+        for system in dashboards_dic.get(dboard, {}).get('system', []):
+            if system in ['HDF-Cloud']:
+                if dboard not in dashboard_filtered.keys():
+                    dashboard_filtered[dboard] = {}
+                dashboard_filtered[dboard]['HDF-Cloud'] = {}
+                continue
+            for account, v1 in user_dic.get(system, {}).items():
+                if 'accounts' in dashboards_dic.get(dboard, {}).get(system, {}).keys() and account not in dashboards_dic.get(dboard, {}).get(system, {}).get('accounts', []):
+                    continue
+                for project, v2 in v1.items():
+                    if 'projects' in dashboards_dic.get(dboard, {}).get(system, {}).keys() and project not in dashboards_dic.get(dboard, {}).get(system, {}).get('projects', []):
+                        continue
+                    for partition in v2.keys():
+                        if 'partitions' in dashboards_dic.get(dboard, {}).get(system, {}).keys() and partition not in dashboards_dic.get(dboard, {}).get(system, {}).get('partitions', []):
+                            continue
+                        if dboard not in dashboard_filtered.keys():
+                            dashboard_filtered[dboard] = {}
+                            dashboard_filtered[dboard][system] = {}
+                            dashboard_filtered[dboard][system][account] = {}
+                            dashboard_filtered[dboard][system][account][project] = []
+                        elif system not in dashboard_filtered[dboard].keys():
+                            dashboard_filtered[dboard][system] = {}
+                            dashboard_filtered[dboard][system][account] = {}
+                            dashboard_filtered[dboard][system][account][project] = []
+                        elif account not in dashboard_filtered[dboard][system].keys():
+                            dashboard_filtered[dboard][system][account] = {}
+                            dashboard_filtered[dboard][system][account][project] = []
+                        elif project not in dashboard_filtered[dboard][system][account].keys():
+                            dashboard_filtered[dboard][system][account][project] = []
+                        dashboard_filtered[dboard][system][account][project].append(partition)
+    return dashboard_filtered
 
 def create_html_dashboard(second_list_all, user_dic, dashboards_dic, reservations_dic, checkboxes, maintenance, unicorex, overall_infos={}):
     html = ""
+    dashboard_filter = filter_dashboard(user_dic, dashboards_dic)
     if len(maintenance) > 0:
         html += '<h3 class="maintenance_j4j">The following systems are not available right now: {}</h3>\n'.format(', '.join(maintenance))
         for m in maintenance:
@@ -162,8 +92,9 @@ def create_html_dashboard(second_list_all, user_dic, dashboards_dic, reservation
     for idash in second_list_all:
         for idash_system in dashboards_dic.get(idash, {}).get('system', []):
             if idash_system in user_dic.keys() or idash_system == 'HDF-Cloud':
-                dashboard_list.append(idash)
-                break
+                if idash in dashboard_filter.keys():
+                    dashboard_list.append(idash)
+                    break
     for idash, dinfos in dashboards_dic.items():
         torm = []
         for system in dinfos.get('system', []):
@@ -186,7 +117,6 @@ def create_html_dashboard(second_list_all, user_dic, dashboards_dic, reservation
     script = "<script>\n"
     html += inputs("Dashboard")
 
-    
     html += new_dropdown("firstdd", "Service", ["Dashboard"], "onChangeDD1", "onClickDD1")
     html += new_dropdown("dashboarddd", "Dashboard", dashboard_list, "onChangeDDDash", "onClickDDDash")
     html += new_dropdown("seconddd", "System", second_list, "onChangeDD2", "onClickDD2")
@@ -234,6 +164,8 @@ def create_html_dashboard(second_list_all, user_dic, dashboards_dic, reservation
     html += html_resource(cpus_per_node, 'resource_cpus_per_node')
     script += resource_scripts(["nodes", "runtime", "gpus", "cpus_per_node"])   
     for dash, dinfos in dashboards_dic.items():
+        if dash not in dashboard_list:
+            continue
         if 'readmore' in dinfos.keys():
             html += dashinfo_text(dash, dinfos.get('readmore', []))
     html += system_readmore(unicorex)
@@ -242,12 +174,11 @@ def create_html_dashboard(second_list_all, user_dic, dashboards_dic, reservation
 
     script += onchange_dd6()
     script += onchange_dd5(user_dic, reservations_dic)
-    script += onchange_dd4(user_dic, dashboards_dic)
-    script += onchange_dd3(user_dic)
-    script += onchange_dd2(user_dic)
-    script += onchange_dddash(dashboard_list, dashboards_dic)
+    script += onchange_dd4(user_dic, dashboard_filter)
+    script += onchange_dd3(user_dic, dashboard_filter)
+    script += onchange_dd2(user_dic, dashboard_filter)
+    script += onchange_dddash(dashboard_list, dashboards_dic, dashboard_filter)
     script += onchange_dd1(["Dashboard"], dashboard_list)
-    #script += onchange_dd1(first_list, second_list_dic)
     script += onclick_dd6()
     script += onclick_dd5()
     script += onclick_dd4()
@@ -255,7 +186,7 @@ def create_html_dashboard(second_list_all, user_dic, dashboards_dic, reservation
     script += onclick_dd2()
     script += onclick_dddash()
     script += onclick_dd1()
-    script += dashinfo_hide(dashboards_dic.keys())
+    script += dashinfo_hide(dashboards_dic.keys(), dashboard_list)
     script += init_script("Dashboard")
     script += system_readmore_hide(unicorex)
     script += "</script>\n"
@@ -292,11 +223,12 @@ def system_readmore_hide(unicorex):
     ret += "}\n"
     return ret
 
-def dashinfo_hide(dashboards):
+def dashinfo_hide(dashboards, dlist):
     ret = ""
     ret += "function dash_text_hide(){\n"
     for dash in dashboards:
-        ret += "  $('#dashinfo_{}_text').hide();\n".format(dash.replace(" ", "_"))
+        if dash in dlist:
+            ret += "  $('#dashinfo_{}_text').hide();\n".format(dash.replace(" ", "_"))
     ret += "}\n"
     return ret
 
@@ -657,11 +589,11 @@ def onchange_dd5(user_dic, reservations_dic={}):
     ret += "}\n"
     return ret
 
-def onchange_dd4(user_dic, dashboards_dic):
+def onchange_dd4(user_dic, dashboard_filter):
     ret = ""
     ret += "function onChangeDD4() {\n"
     ret += "  var first = $('#firstdd').val();\n"
-    ret += "  var dashboard = $('#dashboarddd').val();\n"
+    ret += "  var dash = $('#dashboarddd').val();\n"
     ret += "  var second = $('#seconddd').val();\n"
     ret += "  var third = $('#thirddd').val();\n"
     ret += "  var value = $('#fourthdd').val();\n"
@@ -683,30 +615,29 @@ def onchange_dd4(user_dic, dashboards_dic):
                         if not i in ["LoginNode", "LoginNodeVis"]:
                             rest4_list.append(i)
                     ret += '          $("#fifthdd_ul").html("");\n'
-                    for dash, dinfos in dashboards_dic.items():
-                        if dinfos.get(second, {}).get('onlinerequired', 'false').lower() == 'true':
-                            ret += '        if ( first == "Dashboard" && dashboard == "' + dash + '" ) {\n'
-                            ret += '          $("#fifthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD5", div_prefix="fifthdd", key="LoginNode")
-                            if 'LoginNodeVis' in user_dic.get(second, {}).get(third, {}).get(fourth, {}).keys() and dinfos.get(second, {}).get('LoginNodeVis', 'false').lower() == 'true':
-                                ret += '          $("#fifthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD5", div_prefix="fifthdd", key="LoginNodeVis")
-                            ret += '          $("#fifthdd").val("{}").trigger("change");\n'.format(rest4_list[0])
-                            ret += "          $('#fifthdd_div').show();\n"
-                            ret += '          return;\n'
-                            ret += '        }\n'
-                    for name in rest4_list:
-                        ret += '          $("#fifthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD5", div_prefix="fifthdd", key=name)
-                    ret += '          $("#fifthdd").val("{}").trigger("change");\n'.format(rest4_list[0])
+                    for dashboard, v1 in dashboard_filter.items():
+                        for system, v2 in v1.items():
+                            for account, v3 in v2.items():
+                                for project, v4 in v3.items():
+                                    if len(v4) > 0:
+                                        ret += '          if ( dash == "'+dashboard+'" && second == "'+system+'" && third == "'+account+'" && value == "'+project+'"){\n'
+                                        for partition in v4:
+                                            ret += '            $("#fifthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD5", div_prefix="fifthdd", key=partition)
+                                        ret += '            $("#fifthdd").val("{}").trigger("change");\n'.format(v4[0])
+                                        ret += '          }\n'
                     ret += "          $('#fifthdd_div').show();\n"
-                    ret += "        }\n"
+                    ret += '          return;\n'
+                    ret += '        }\n'
             ret += "      }\n"
         ret += "    }\n"
     ret += "}\n"
     return ret
 
-def onchange_dd3(user_dic):
+def onchange_dd3(user_dic, dashboard_filter):
     ret = ""
     ret += "function onChangeDD3() {\n"
     ret += "  var first = $('#firstdd').val();\n"
+    ret += "  var dash = $('#dashboarddd').val();\n"
     ret += "  var second = $('#seconddd').val();\n"
     ret += "  var value = $('#thirddd').val();\n"
     ret += "  $('#third_input').val(value);\n"
@@ -719,23 +650,30 @@ def onchange_dd3(user_dic):
             if len(rest3.keys()) > 0:
                 ret += '      if ( value == "'+ third +'" ) {\n'
                 ret += '        $("#fourthdd_ul").html("");\n'
-                for name in sorted(rest3.keys(), key=lambda s: s.casefold()):
-                    ret += '        $("#fourthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD4", div_prefix="fourthdd", key=name)
-                ret += '        $("#fourthdd").val("{}").trigger("change");\n'.format(sorted(rest3.keys(), key=lambda s: s.casefold())[0])
+                for dashboard, v1 in dashboard_filter.items():
+                    for system, v2 in v1.items():
+                        for account, v3 in v2.items():
+                            if len(v3.keys()) > 0:
+                                ret += '        if ( dash == "'+dashboard+'" && second == "'+system+'" && value == "'+account+'"){\n'
+                                for project in sorted(v3.keys(), key=lambda s: s.casefold()):
+                                    ret += '          $("#fourthdd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD4", div_prefix="fourthdd", key=project)
+                                ret += '          $("#fourthdd").val("{}").trigger("change");\n'.format(sorted(v3.keys(), key=lambda s: s.casefold())[0])
+                                ret += '        }\n'
                 ret += "        $('#fourthdd_div').show();\n"
                 ret += "      }\n"
         ret += "    }\n"
     ret += "}\n"
     return ret
 
-def onchange_dd2(user_dic):
+def onchange_dd2(user_dic, dashboard_filter):
     ret = ""
     ret += "function onChangeDD2() {\n"
     ret += "  var first = $('#firstdd').val();\n"
+    ret += "  var dash = $('#dashboarddd').val();\n"
     ret += "  var value = $('#seconddd').val();\n"
     ret += "  $('#second_input').val(value);\n"
     ret += "  $('#seconddd').html(value + ' <span class=\\\"caret\\\"></span>');\n"
-    for second, rest2 in user_dic.items():
+    for second in user_dic.keys():
         ret += '    if ( value == "'+ second +'" ) {\n'
         ret += "      if( $('#readmore_system_" + second + "_div').length ){\n"
         ret += "        $('#readmore_system_{}_div').show();\n".format(second)
@@ -746,16 +684,21 @@ def onchange_dd2(user_dic):
         else:
             ret += "        $('#thirddd_label').html('Account');\n" 
         ret += '        $("#thirddd_ul").html("");\n'
-        for name in sorted(rest2.keys(), key=lambda s: s.casefold()):
-            ret += '        $("#thirddd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD3", div_prefix="thirddd", key=name)
-        ret += '        $("#thirddd").val("{}").trigger("change");\n'.format(sorted(rest2.keys(), key=lambda s: s.casefold())[0])
+        for dashboard, v1 in dashboard_filter.items():
+            for system, v2 in v1.items():
+                if len(v2.keys()) > 0:
+                    ret += '        if ( dash == "'+dashboard+'" && value == "'+system+'"){\n'
+                    for account in sorted(v2.keys(), key=lambda s: s.casefold()):
+                        ret += '          $("#thirddd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD3", div_prefix="thirddd", key=account)
+                    ret += '          $("#thirddd").val("{}").trigger("change");\n'.format(sorted(v2.keys(), key=lambda s: s.casefold())[0])
+                    ret += '        }\n'
         ret += "        $('#thirddd_div').show();\n"
         ret += "      }\n"
         ret += "    }\n"
     ret += "}\n"
     return ret
 
-def onchange_dddash(dashboard_list, dashboard_dic):
+def onchange_dddash(dashboard_list, dashboard_dic, dashboard_filter):
     ret = ""
     ret += "function onChangeDDDash() {\n"
     ret += "  var first = $('#firstdd').val();\n"
@@ -770,9 +713,9 @@ def onchange_dddash(dashboard_list, dashboard_dic):
         ret += "      $('#'+tmp+'').show();\n"
         ret += "    }\n"
         ret += '    $("#seconddd_ul").html("");\n'
-        for second in dashboard_dic.get(dash_name, {}).get('system', []):
+        for second in dashboard_filter.get(dash_name, {}).keys():
             ret += '    $("#seconddd_ul").append(\'<li><a href="#" onclick="{onclick}(\\\'{key}\\\')" id="{div_prefix}_{key}">{key}</a></li>\');\n'.format(onclick="onClickDD2", div_prefix="seconddd", key=second)
-        ret += '    $("#seconddd").val("{}").trigger("change");\n'.format(dashboard_dic.get(dash_name, {}).get('system', [""])[0])
+        ret += '    $("#seconddd").val("{}").trigger("change");\n'.format(list(dashboard_filter.get(dash_name, {}).keys())[0])
         ret += "    $('#seconddd_div').show();\n"
         ret += "    if( $('#dashinfo_" + dash_name + "_text').length ){\n"
         ret += "      $('#dashinfo_" + dash_name + "_text').show();\n"
@@ -825,17 +768,35 @@ def init_script(first):
     ret += '  var ls_sixth = localStorage.getItem(first+"_sixth");\n'
     if first == "Dashboard":
         ret += '  var ls_dash = localStorage.getItem(first+"_dashboard");\n'
+        ret += '  if (! $("#dashboarddd_ul").html().includes(ls_dash)) {\n'
+        ret += '    return;\n'
+        ret += '  }\n'
         ret += '  if (ls_dash != null && ls_dash != "null") {\n'
         ret += '    onClickDDDash(ls_dash);\n'
     ret += '  if (ls_second != null && ls_second != "null") {\n'
+    ret += '    if (! $("#seconddd_ul").html().includes(ls_second)) {\n'
+    ret += '      return;\n'
+    ret += '    }\n'
     ret += '    onClickDD2(ls_second);\n'
     ret += '    if (ls_third != null && ls_third != "null") {\n'
+    ret += '      if (! $("#thirddd_ul").html().includes(ls_third)) {\n'
+    ret += '        return;\n'
+    ret += '      }\n'
     ret += '      onClickDD3(ls_third);\n'
     ret += '      if (ls_fourth != null && ls_fourth != "null") {\n'
+    ret += '        if (! $("#fourthdd_ul").html().includes(ls_fourth)) {\n'
+    ret += '          return;\n'
+    ret += '        }\n'
     ret += '        onClickDD4(ls_fourth);\n'
     ret += '        if (ls_fifth != null && ls_fifth != "null") {\n'
+    ret += '          if (! $("#fifthdd_ul").html().includes(ls_fifth)) {\n'
+    ret += '            return;\n'
+    ret += '          }\n'
     ret += '          onClickDD5(ls_fifth);\n'
     ret += '          if (ls_sixth != null && ls_sixth != "null") {\n'
+    ret += '            if (! $("#sixthdd_ul").html().includes(ls_sixth)) {\n'
+    ret += '              return;\n'
+    ret += '            }\n'
     ret += '            onClickDD6(ls_sixth);\n'
     ret += '          }\n'
     ret += '        }\n'

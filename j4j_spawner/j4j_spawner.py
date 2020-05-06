@@ -24,7 +24,8 @@ from jupyterhub.utils import url_path_join
 
 
 from .utils import reservations, create_spawn_data, create_spawn_header, get_maintenance, get_accesstoken
-from .html import create_html_dashboard, create_html_jupyterlab
+from j4j_spawner.html_jupyterlab import create_html_jupyterlab
+from j4j_spawner.html_dashboard import create_html_dashboard
 from .communication import j4j_orchestrator_request
 from .file_loads import get_token
 
@@ -320,7 +321,7 @@ class J4J_Spawner(Spawner):
             self.user.db.refresh(db_user)
             self.user.encrypted_auth_state = db_user.encrypted_auth_state
         state = await self.user.get_auth_state()
-        if len(state.get('accesstoken', '')) == 0 or len(state.get('refreshtoken', '')) == 0 or len(state.get('expire', '')) == 0:
+        if len(state.get('accesstoken', 0)) == 0 or len(state.get('refreshtoken', 0)) == 0 or len(state.get('expire', 0)) == 0:
                     # check for cron job:
             try:
                 with open(self.cronjobinfopath, 'r') as f:
