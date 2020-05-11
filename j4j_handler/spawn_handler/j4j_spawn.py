@@ -113,14 +113,15 @@ class J4J_SpawnHandler(SpawnHandler):
         proxy_urls.append('/api/routes{baseurl}spawn/{username}/{servername}'.format(baseurl=self.hub.base_url, username=user.name, servername=server_name))
         proxy_urls.append('/api/routes{shortbaseurl}spawn/{username}/{servername}'.format(shortbaseurl=self.hub.base_url[:-len('hub/')], username=user.name, servername=server_name))
         proxy_json = { 'target': target }
-        self.log.debug("UID={} - Add Proxy routes: {}: {}".format(user.name, proxy_base_url, proxy_urls))
-        for proxy_url in proxy_urls:
-            try:
-                with closing(requests.post(proxy_base_url+proxy_url, headers=proxy_headers, json=proxy_json, verify=False)) as r:
-                    if r.status_code != 201:
-                        raise Exception('{} {}'.format(r.status_code, r.text))
-            except:
-                self.log.exception("UID={} : Could not add route {} to proxy. Target: {}".format(user.name, proxy_url, target))
+        if user.authenticator.multiple_instances:
+            self.log.debug("UID={} - Add Proxy routes: {}: {}".format(user.name, proxy_base_url, proxy_urls))
+            for proxy_url in proxy_urls:
+                try:
+                    with closing(requests.post(proxy_base_url+proxy_url, headers=proxy_headers, json=proxy_json, verify=False)) as r:
+                        if r.status_code != 201:
+                            raise Exception('{} {}'.format(r.status_code, r.text))
+                except:
+                    self.log.exception("UID={} : Could not add route {} to proxy. Target: {}".format(user.name, proxy_url, target))
         self.log.debug("UID={} - Redirect to: {}".format(user.name, next_url))
         self.redirect(next_url)
         return
